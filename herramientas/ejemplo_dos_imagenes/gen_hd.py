@@ -3,7 +3,7 @@ from vec import to_svg
 from furlib2 import Fur
 sq=cv2.imread('color.png'); H,W=sq.shape[:2]; O='out'; os.system('rm -rf out'); os.makedirs(O,exist_ok=True)
 orig=sq.astype(np.float32)/255; L=cv2.cvtColor(sq,cv2.COLOR_BGR2GRAY).astype(np.float32)
-GL=np.load('G_hd.npy',allow_pickle=True).item(); REG=np.load('REG.npy',allow_pickle=True).item()
+GL=np.load('G_hd.npy',allow_pickle=True).item(); GWD=np.load('GW_hd.npy',allow_pickle=True).item(); GU=np.load('guias.npy',allow_pickle=True).item(); REG=np.load('REG.npy',allow_pickle=True).item()
 REG['fondo']=(1-np.clip(sum(REG.values()),0,1)).astype(np.uint8); REG={k:v.astype(np.float32) for k,v in REG.items()}
 big=cv2.imread('/mnt/user-data/attachments/2a8fc66a-2bf4-5ad0-b410-99770220e857/9a03d3b5-image.png',0)
 INK=np.clip((235-cv2.resize(big,(W,H),interpolation=cv2.INTER_AREA).astype(np.float32))/180,0,1)   # tinta real, con su grosor
@@ -26,17 +26,18 @@ def ssl(segs,th=3,val=.5):
 def oval(c,a,b,ang=0,t0=0,t1=2*np.pi):
     ca,sa=np.cos(np.radians(ang)),np.sin(np.radians(ang)); t=np.linspace(t0,t1,80)
     return np.stack([c[0]+a*np.cos(t)*ca-b*np.sin(t)*sa,c[1]+a*np.cos(t)*sa+b*np.sin(t)*ca],1)
-G=[oval((430,170),78,110,-15),np.array([(470,70),(400,300)]),np.array([(350,135),(500,130)]),np.array([(360,200),(440,195)]),
-   oval((450,190),170,190),oval((450,170),280,280,0,np.pi,2*np.pi),np.array([(200,514),(340,380),(560,370),(820,514)])]
+G=GU['g1']+GU['g4']
 guide=ssl(G,3,.45); i=1; VEC={}; SV={}; DONE=Z.copy()
 def base():
     o=paper*(1-guide[:,:,None])+GR*guide[:,:,None]
     return o*(1-DONE[:,:,None])+GR*DONE[:,:,None]
 F=Fur(L,(L<250).astype(np.uint8))
 save(base(),'1'); save(base(),'1g')
+i+=1; segs=GU['g2']+GU['g3']; VEC[i]=to_svg(segs,400/W); nl_=ssl(segs,4,1.0); o=base(); save(o*(1-nl_[:,:,None])+RED*nl_[:,:,None],str(i))
+guide=np.maximum(guide,ssl(segs,3,.45)); save(base(),f'{i}g'); print(i,'guias de la cara')
 for si,k in enumerate(STEPS):
     i+=1; segs=[np.asarray(q,np.float32) for q in GL.get(k,[])]
-    VEC[i]=to_svg(segs,400/W)
+    VEC[i]=[v+[w] for v,w in zip(to_svg(segs,400/W),GWD.get(k,[]))]
     m=INK*(lab==si); o=base(); o=o*(1-m[:,:,None])+RED*m[:,:,None]
     save(o,str(i)); DONE=np.maximum(DONE,m*0.85); save(base(),f'{i}g'); print(i,k,len(VEC[i]))
 NL=i; guide=Z.copy(); hbase=base(); save(hbase,f'{NL}h'); prev=hbase.copy(); acc_t=Z.copy()

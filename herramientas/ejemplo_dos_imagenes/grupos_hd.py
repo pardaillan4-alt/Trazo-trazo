@@ -1,6 +1,6 @@
 import cv2,numpy as np
 im=cv2.imread('color.png'); H,W=im.shape[:2]; lm=np.load('lm.npy')
-ps=list(np.load('trazos_hd.npy',allow_pickle=True))
+ps=list(np.load('trazos_hd.npy',allow_pickle=True)); WD=list(np.load('wid_hd.npy'))
 OVAL=[10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109]
 def poly(p): m=np.zeros((H,W),np.uint8); cv2.fillPoly(m,[np.array(p,np.int32)],1); return m
 face=poly(lm[OVAL]); face=cv2.dilate(face,np.ones((9,9),np.uint8))
@@ -16,14 +16,15 @@ neck=poly([(380,290),(505,262),(525,420),(360,440)])
 robe=poly([(150,514),(250,395),(340,375),(570,365),(720,380),(850,514)])
 nub=poly([(0,148),(40,145),(90,155),(130,175),(160,215),(200,250),(250,270),(290,300),(310,340),(290,420),(200,514),(0,514)])|poly([(900,190),(860,195),(820,215),(790,250),(740,270),(690,280),(640,310),(630,380),(760,400),(900,514)])
 G={}; order=[('ojos y cejas',ojos),('nariz y boca',nariz|boca),('barba',beard),('contorno de la cara',face),('cabello',hair),('cuello',neck),('tunica y manto',robe)]
-for p in ps:
+GW={}
+for p,wd in zip(ps,WD):
     x=np.clip(np.round(p[:,0]).astype(int),0,W-1); y=np.clip(np.round(p[:,1]).astype(int),0,H-1); k=None
     for nm,m in order:
         if m[y,x].mean()>0.5: k=nm; break
     if k is None:
         k='nubes' if nub[y,x].mean()>0.5 else 'aureola y rayos'
-    G.setdefault(k,[]).append(p)
-np.save('G_hd.npy',np.array(G,dtype=object)); print({k:len(v) for k,v in G.items()})
+    G.setdefault(k,[]).append(p); GW.setdefault(k,[]).append(float(wd))
+np.save('G_hd.npy',np.array(G,dtype=object)); np.save('GW_hd.npy',np.array(GW,dtype=object)); print({k:len(v) for k,v in G.items()})
 cols={'ojos y cejas':(255,0,0),'nariz y boca':(200,0,200),'barba':(0,120,255),'contorno de la cara':(40,80,240),'cabello':(60,60,60),'cuello':(0,128,128),'tunica y manto':(0,150,0),'aureola y rayos':(150,150,150),'nubes':(255,150,0)}
 w_=np.full((H,W,3),250,np.uint8)
 for k,pp in G.items():
