@@ -3,6 +3,9 @@ from PIL import Image
 def integ(d,vf,k,did,ch,o,js,zs,vn,CW=600):
     APP='trazo2/'
     v=json.load(open(f'{d}/{vf}')); nl,n=v['nl'],v['n']
+    if o.get('exact') or o.pop('continuo',False):      # trazo continuo: orillas de corrido y luego detalles
+        sys.path.insert(0,'cont'); import continuo as _C
+        _w=_C.umbral(v['vec']); v['vec']={k:_C.procesar_paso5(vk,_w)[0] for k,vk in v['vec'].items()}
     assert 1+len(o['lines'])+sum(t.get('b',3) for t in o['tones'])+len(o['fin'])==n,n
     names=[(f'img/p6_{k}_{i}.webp',f'{d}/out/{i}.png') for i in range(1,nl+1)]+[(f'img/p6g_{k}_{i}.webp',f'{d}/out/{i}g.png') for i in range(1,nl)]+[(f'img/p6h_{k}_{nl}.webp',f'{d}/out/{nl}h.png')]+[(f'img/p6_{k}_{i}.webp',f'{d}/out/{i}.png') for i in range(nl+1,n+1)]
     mp={}; files={}
