@@ -381,7 +381,7 @@ def procesar_paso4(vk,wthr):
 def _costo_desde(seq,pen):
     if not seq: return 0.0
     return float(np.linalg.norm(seq[0][0][0]-pen))+_costo(seq)
-def ordenar5(P,Wd,wthr=None,close_u=7.0,near_u=2.6):
+def ordenar5(P,Wd,wthr=None,close_u=7.0,near_u=2.6,chica_u=28.0,pegada_u=1e9):
     import cv2
     from scipy.spatial import cKDTree
     if not P: return []
@@ -391,25 +391,60 @@ def ordenar5(P,Wd,wthr=None,close_u=7.0,near_u=2.6):
     for p in P: cv2.polylines(m,[np.round((p-[x0,y0])*S).astype(np.int32)],closed(p),1,3)
     k=int(close_u*S)|1; m=cv2.morphologyEx(m,cv2.MORPH_CLOSE,cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(k,k)))
     n_,lab=cv2.connectedComponents(m,connectivity=8)
+    def chico(p):
+        ext=float(max(np.ptp(p[:,0]),np.ptp(p[:,1]))); return (closed(p) and ext<14) or ext<6
+    # la orilla se mide sin las gotitas y manchitas de alrededor (si no, la orilla rodea las gotas y no la figura)
+    m2=np.zeros_like(m)
+    for p in P:
+        if not chico(p): cv2.polylines(m2,[np.round((p-[x0,y0])*S).astype(np.int32)],closed(p),1,3)
+    m2=cv2.morphologyEx(m2,cv2.MORPH_CLOSE,cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(k,k)))
     comps={}
     for i,(p,w) in enumerate(zip(P,Wd)):
         q=np.round((p-[x0,y0])*S).astype(int); q[:,0]=np.clip(q[:,0],0,Wpx-1); q[:,1]=np.clip(q[:,1],0,Hpx-1)
         ls=lab[q[:,1],q[:,0]]; ls=ls[ls>0]; c=int(np.bincount(ls).argmax()) if len(ls) else 0
         comps.setdefault(c,[]).append((p,w))
+    # figuritas (manchas, puntitos, burbujas pegadas a una figura): son detalles de la figura grande más cercana,
+    # así la mano termina primero la orilla y no se detiene a medio camino a hacer un puntito
+    tam={c:sum(plen(p) for p,_ in it if not chico(p)) for c,it in comps.items()}      # un montoncito de gotas no es figura grande
+    def extension(c): pts=np.vstack([p for p,_ in comps[c]]); return float(np.ptp(pts,0).max())
+    grandes=[c for c in comps if tam[c]>=chica_u and extension(c)>=20]          # un mechoncito o un pececito suelto no es figura grande
+    extra={}
+    if grandes:
+        GP={c:np.vstack([p for p,_ in comps[c]]) for c in grandes}; GT={c:cKDTree(GP[c]) for c in grandes}
+        for c in [c for c in comps if c not in grandes]:
+            pts=np.vstack([p for p,_ in comps[c]])
+            dmin,cb=min(((float(GT[g].query(pts)[0].min()),g) for g in grandes),key=lambda t:t[0])
+            if dmin<=pegada_u: extra.setdefault(cb,[]).extend(comps.pop(c))
+    # figuras metidas dentro de otra mucho más grande (mechones de la cara dentro de la cabeza, aletas dentro del cuerpo):
+    # son detalles de la grande, se hacen cuando ya está toda la orilla
+    orden=sorted([c for c in comps if c>0],key=lambda c:-tam[c]); fills={}
+    for c in orden:
+        if c not in grandes: continue
+        mk=((lab==c)&(m2>0)).astype(np.uint8)
+        if not mk.any(): continue
+        cs,_=cv2.findContours(mk,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE); f=np.zeros_like(m); cv2.drawContours(f,cs,-1,1,-1); fills[c]=f
+    for c in sorted([c for c in comps if c>0],key=lambda c:tam[c]):
+        pts=np.vstack([p for p,_ in comps[c]]); q=np.round((pts-[x0,y0])*S).astype(int); q[:,0]=np.clip(q[:,0],0,Wpx-1); q[:,1]=np.clip(q[:,1],0,Hpx-1)
+        for g in orden:
+            if g==c or g not in fills or g not in comps or tam[g]<3*max(tam[c],1.0): continue
+            if fills[g][q[:,1],q[:,0]].mean()>=0.8: extra.setdefault(g,[]).extend(comps.pop(c)+extra.pop(c,[])); break
     # orilla de cada figura
     info=[]
     for c,items in comps.items():
-        mask=(lab==c).astype(np.uint8) if c>0 else np.zeros_like(m)
+        mask=((lab==c)&(m2>0)).astype(np.uint8) if c>0 else np.zeros_like(m)
+        if c>0 and not mask.any(): mask=(lab==c).astype(np.uint8)
         cs,_=cv2.findContours(mask,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
         if cs:
             cc=max(cs,key=cv2.contourArea)[:,0,:].astype(np.float32)/S+[x0,y0]; tree=cKDTree(cc)
             borde=[];dentro=[]
             for p,w in items:
+                if chico(p): dentro.append((p,w)); continue      # manchita, burbuja o rayita pegada a la orilla: es detalle
                 dd,_=tree.query(p); (borde if ((dd<=near_u).mean()>=0.6) else dentro).append((p,w))
         else: borde,dentro=list(items),[]
         if not borde: borde,dentro=dentro,[]
-        info.append((borde,dentro))
-    res=[]; pen=_arranque([it for b,d in info for it in b+d])
+        info.append((borde,dentro+extra.get(c,[])))
+    princ=[it for b,d in info for it in b if sum(plen(q) for q,_ in b)>=chica_u and float(np.ptp(np.vstack([q for q,_ in b]),0).max())>=20]       # se empieza por una orilla grande
+    res=[]; pen=_arranque(princ or [it for b,d in info for it in b+d])
     def pts_of(items): return np.vstack([np.vstack([p[0],p[-1]]) if not closed(p) else p for p,_ in items])
     # 1) todas las orillas, figura por figura (la más cercana primero)
     pend=[j for j in range(len(info)) if info[j][0]]
