@@ -11,3 +11,4 @@
   - `grupos6.py`: reparte los trazos en pasos con las zonas de `cfg_*.json`; parte en la orilla de la zona los trazos que cruzan de una parte a otra; manda las burbujas sueltas a su propio paso y las cuerdas (rectas que apuntan a la punta del mástil) al paso del mástil.
   - `gen6.py`: guías medidas sobre el dibujo (óvalos ajustados a cada parte, curvas y rectas) y sombreado por regiones; la silueta de cada región no se sale por las rendijas del contorno.
   - `integ_mar.py`: integra las dos versiones (color y lápiz) de cada dibujo. `cmp.py`, `ver_idx.py` y `grid_trazos.py`: revisión de cerca.
+- Para armar la app después de agregar un dibujo: ver `fuente/LEEME.md` (`sh assemble.sh` crea `index.html`, `app.html`, `vec/` y las miniaturas).
