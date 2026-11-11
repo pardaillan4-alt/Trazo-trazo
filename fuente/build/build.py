@@ -9,7 +9,7 @@ from PIL import Image
 import numpy as np
 os.chdir(os.path.dirname(os.path.abspath(__file__))+'/..')
 # 1) trazos de cada dibujo y datos de miniaturas
-r=subprocess.run(['node','build/export_vec.js','.','vec'],capture_output=True,text=True)
+r=subprocess.run(['node','build/export_vec.js','.','vec','build/miniaturas.json'],capture_output=True,text=True)
 if r.returncode: print(r.stderr); sys.exit(1)
 info=json.loads(r.stdout.strip().split('\n')[-1]); print('dibujos',info['n'],'con trazos',info['conDatos'],'MB',round(info['bytes']/1e6,2))
 VECF=sorted(f[:-5] for f in os.listdir('vec') if f.endswith('.json'))

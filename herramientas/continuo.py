@@ -381,7 +381,10 @@ def procesar_paso4(vk,wthr):
 def _costo_desde(seq,pen):
     if not seq: return 0.0
     return float(np.linalg.norm(seq[0][0][0]-pen))+_costo(seq)
-def ordenar5(P,Wd,wthr=None,close_u=7.0,near_u=2.6,chica_u=28.0,pegada_u=1e9):
+def ordenar5(P,Wd,wthr=None,close_u=7.0,near_u=2.6,chica_u=28.0,pegada_u=1e9,pen=None,por_figura=True):
+    """por_figura: cada figura se termina (orilla y luego lo de adentro) antes de pasar a la siguiente,
+    así la mano no regresa a una figura que ya dejó (un ojo y luego el otro, una mano y luego la otra).
+    pen: dónde quedó la mano (para seguir desde el grupo anterior)."""
     import cv2
     from scipy.spatial import cKDTree
     if not P: return []
@@ -444,12 +447,11 @@ def ordenar5(P,Wd,wthr=None,close_u=7.0,near_u=2.6,chica_u=28.0,pegada_u=1e9):
         if not borde: borde,dentro=dentro,[]
         info.append((borde,dentro+extra.get(c,[])))
     princ=[it for b,d in info for it in b if sum(plen(q) for q,_ in b)>=chica_u and float(np.ptp(np.vstack([q for q,_ in b]),0).max())>=20]       # se empieza por una orilla grande
-    res=[]; pen=_arranque(princ or [it for b,d in info for it in b+d])
+    res=[]
+    if pen is None: pen=_arranque(princ or [it for b,d in info for it in b+d])
     def pts_of(items): return np.vstack([np.vstack([p[0],p[-1]]) if not closed(p) else p for p,_ in items])
-    # 1) todas las orillas, figura por figura (la más cercana primero)
-    pend=[j for j in range(len(info)) if info[j][0]]
-    while pend:
-        j=min(pend,key=lambda j:float(np.min(np.linalg.norm(pts_of(info[j][0])-pen,axis=1)))); pend.remove(j); borde=info[j][0]
+    def hacer_borde(borde):
+        nonlocal pen,res
         cands=[]
         nn,_=_nn(borde,pen); cands.append(_mejorar(nn))
         if len(borde)>=3:
@@ -457,21 +459,41 @@ def ordenar5(P,Wd,wthr=None,close_u=7.0,near_u=2.6,chica_u=28.0,pegada_u=1e9):
                 ar=ordenar2([p for p,_ in borde],[w for _,w in borde],wthr=wthr,Lmaj=1e9,pen=pen); cands.append(_mejorar(ar))
             except Exception: pass
         best=min(cands,key=lambda s:_costo_desde(s,pen)); res+=best; pen=best[-1][0][-1]
-    # 2) después lo de adentro, figura por figura: primero líneas fuertes, luego detalles finos
-    pend=[j for j in range(len(info)) if info[j][1]]
-    while pend:
-        j=min(pend,key=lambda j:float(np.min(np.linalg.norm(pts_of(info[j][1])-pen,axis=1)))); pend.remove(j); dentro=info[j][1]
+    def hacer_dentro(dentro):      # primero líneas fuertes, luego detalles finos
+        nonlocal pen,res
         L=[plen(p) for p,_ in dentro]
         isb=[(l>=26 or (wthr is not None and it[1] is not None and it[1]>=wthr)) for it,l in zip(dentro,L)]
         for grp in ([it for it,b in zip(dentro,isb) if b],[it for it,b in zip(dentro,isb) if not b]):
             if not grp: continue
             nn,_=_nn(grp,pen); seq=_mejorar(nn); res+=seq; pen=seq[-1][0][-1]
+    if por_figura:
+        # figura por figura (la más cercana a la mano): su orilla de corrido y luego lo de adentro
+        pend=[j for j in range(len(info)) if info[j][0] or info[j][1]]
+        while pend:
+            j=min(pend,key=lambda j:float(np.min(np.linalg.norm(pts_of(info[j][0] or info[j][1])-pen,axis=1)))); pend.remove(j)
+            if info[j][0]: hacer_borde(info[j][0])
+            if info[j][1]: hacer_dentro(info[j][1])
+        return res
+    # 1) todas las orillas, figura por figura (la más cercana primero)
+    pend=[j for j in range(len(info)) if info[j][0]]
+    while pend:
+        j=min(pend,key=lambda j:float(np.min(np.linalg.norm(pts_of(info[j][0])-pen,axis=1)))); pend.remove(j); hacer_borde(info[j][0])
+    # 2) después lo de adentro, figura por figura
+    pend=[j for j in range(len(info)) if info[j][1]]
+    while pend:
+        j=min(pend,key=lambda j:float(np.min(np.linalg.norm(pts_of(info[j][1])-pen,axis=1)))); pend.remove(j); hacer_dentro(info[j][1])
     return res
-def procesar_paso5(vk,wthr):
-    P=[parse(v[0]) for v in vk]; Wd=[(v[2] if len(v)>2 else None) for v in vk]
-    pairs=[(p,w) for p,w in zip(P,Wd) if len(p)>=1]; P=[p for p,_ in pairs]; Wd=[w for _,w in pairs]
+def procesar_paso5(vk,wthr,por_figura=True):
+    """Un 4.o valor en cada trazo (grupo) da el orden de las partes de un paso compuesto
+    (por ejemplo: corazón, corona, llamas y cruz): cada grupo se termina antes de empezar el siguiente."""
+    P=[parse(v[0]) for v in vk]; Wd=[(v[2] if len(v)>2 else None) for v in vk]; Gr=[(v[3] if len(v)>3 else 0) for v in vk]
+    trip=[(p,w,g) for p,w,g in zip(P,Wd,Gr) if len(p)>=1]; P=[t[0] for t in trip]; Wd=[t[1] for t in trip]; Gr=[t[2] for t in trip]
     antes=(len(P),saltos(P))
-    J,JW=unir(P,Wd); R=ordenar5(J,JW,wthr=wthr)
+    R=[]; pen=None
+    for g in sorted(set(Gr)):
+        Pg=[p for p,gg in zip(P,Gr) if gg==g]; Wg=[w for w,gg in zip(Wd,Gr) if gg==g]
+        J,JW=unir(Pg,Wg); Rg=ordenar5(J,JW,wthr=wthr,pen=pen,por_figura=por_figura)
+        if Rg: R+=Rg; pen=Rg[-1][0][-1]
     out=[]
     for p,w in R:
         e=[to_d(p),round(plen(p),1)]

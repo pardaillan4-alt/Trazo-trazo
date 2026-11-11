@@ -1,6 +1,6 @@
 // Saca los trazos animados de cada dibujo a vec/<id>.json (se cargan al abrir el dibujo)
 const vm=require('vm'),fs=require('fs'),path=require('path');
-const dir=process.argv[2], out=process.argv[3];
+const dir=process.argv[2], out=process.argv[3];   // argv[4]: dónde guardar la lista de miniaturas
 const files=['helpers.js','render.js','parts.js',...fs.readdirSync(dir).filter(f=>/^g_.*\.js$/.test(f)).sort()];
 const noop=()=>{};
 const ctx={console,setTimeout,clearTimeout,setInterval,clearInterval};
@@ -26,5 +26,5 @@ for(const d of ctx.__D){
     th.push({id:d.id,tk,src,sp,h:d.h||400});
   }
 }
-fs.writeFileSync(path.join(out,'..','miniaturas.json'),JSON.stringify(th));
+fs.writeFileSync(process.argv[4]||path.join(out,'..','miniaturas.json'),JSON.stringify(th));
 console.log(JSON.stringify({n:ctx.__D.length,conDatos:ids.length,bytes:tot,miniaturas:th.length}));

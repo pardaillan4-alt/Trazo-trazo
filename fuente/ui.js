@@ -7,7 +7,7 @@ const LV=[
  {n:5,t:'Maestros',d:'Dibujos largos y detallados. Para tener paciencia y disfrutar.'}
 ];
 const CATS=['Animales','Personas','Paisajes','Juguetes'];
-const NUEVOS=new Set(['dballena5','ddelfin5','dgatito5','dperrito5','djirafa']);
+const NUEVOS=new Set(['dsagrado_lapiz','dballena5','ddelfin5','dgatito5','dperrito5','djirafa']);
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const app=$('#app'),EST=$('#estudio'),CAPAS=$('#capas');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
