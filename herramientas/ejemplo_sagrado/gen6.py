@@ -60,6 +60,7 @@ def pmask(names):
         for poly in (POL[n] if n in POL else [sh[1] for sh in cfg['zonas'][n]]): cv2.fillPoly(m,[np.array(poly,np.int32)],1)
     return m
 def figura():
+    if np.median(np.r_[L[0,:],L[-1,:],L[:,0],L[:,-1]])<200: return np.ones((H,W),np.uint8)   # fondo oscuro: todo es parte del dibujo
     f=(cv2.GaussianBlur(L,(0,0),1.2)<246).astype(np.uint8)
     f=cv2.morphologyEx(f,cv2.MORPH_CLOSE,cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(15,15)))
     ff=np.pad(f,1); msk=np.zeros((H+4,W+4),np.uint8); cv2.floodFill(ff,msk,(0,0),2)
@@ -77,7 +78,16 @@ for nm,steps,bands,*op in cfg['regiones']:
             m&=cv2.dilate(silueta2(steps['silueta']),cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)))
         if steps.get('mas_silueta'):  # partes que van completas aunque se salgan del polígono (por ejemplo, las manos)
             m|=cv2.dilate(silueta2(steps['mas_silueta']),cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5)))&FIG&(1-usado)
-        REG.append((nm,m.astype(np.uint8),bands)); usado|=m.astype(np.uint8); continue
+        if steps.get('mas_color'):    # y lo que tiene el color de esa parte (la piel de las manos), dentro de sus polígonos
+            mc=steps['mas_color']; im_=cv2.resize(cv2.imread(mc['img']),(W,H),interpolation=cv2.INTER_AREA)
+            hv=cv2.cvtColor(im_,cv2.COLOR_BGR2HSV); (h0,h1),(s0,s1),(v0,v1)=mc['hsv']
+            cm=((hv[...,0]>=h0)&(hv[...,0]<=h1)&(hv[...,1]>=s0)&(hv[...,1]<=s1)&(hv[...,2]>=v0)&(hv[...,2]<=v1)).astype(np.uint8)
+            pm=np.zeros((H,W),np.uint8)
+            for pp in mc['pol']: cv2.fillPoly(pm,[np.array(pp,np.int32)],1)
+            cm=cv2.morphologyEx(cm&pm,cv2.MORPH_CLOSE,cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)))
+            cm=cv2.morphologyEx(cm,cv2.MORPH_OPEN,cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5)))
+            m=m|(cm&FIG&(1-usado))
+        REG.append((nm,m.astype(np.uint8),bands,steps.get('suave'))); usado|=m.astype(np.uint8); continue
     m=(1-usado) if steps is None else (silueta2(steps)&(1-usado))
     if len(op)>2 and op[2]:      # dentro de estas zonas, la silueta cerrada completa (aletas, casco con huecos en el contorno)
         zm=np.zeros((H,W),np.uint8)
@@ -90,8 +100,8 @@ for nm,steps,bands,*op in cfg['regiones']:
         for k in op[1]:
             for p in GL.get(k,[]): cv2.polylines(ln,[np.round(p).astype(np.int32)],False,1,2)
         m=(m|ln)&(1-usado)
-    REG.append((nm,m.astype(np.uint8),bands)); usado|=m.astype(np.uint8)
-cv2.imwrite(f'regiones_{TAG}.jpg',np.hstack([cv2.cvtColor(m*255,cv2.COLOR_GRAY2BGR) for _,m,_ in REG]))
+    REG.append((nm,m.astype(np.uint8),bands,None)); usado|=m.astype(np.uint8)
+cv2.imwrite(f'regiones_{TAG}.jpg',np.hstack([cv2.cvtColor(m*255,cv2.COLOR_GRAY2BGR) for _,m,_,_ in REG]))
 # guías medidas sobre el dibujo
 G=[]
 for gd in cfg['guias']:
@@ -156,10 +166,16 @@ def show(src): a=acc[:,:,None]; return hbase*(1-a)+src*a
 def tstep():
     global i,prev
     i+=1; img=show(orig); save(img,str(i)); SV[i]=F.streams(np.abs(img-prev).max(2),spacing=10,sc=400/W); prev=img
-for nm,m,bands in REG:
+for nm,m,bands,suave in REG:
     reg=cv2.GaussianBlur(cv2.dilate(m.astype(np.float32),np.ones((3,3),np.uint8)),(0,0),2)
+    if suave:      # [sigma, y0, y1]: entre y0 y y1 la orilla se desvanece (donde la parte no tiene contorno, por ejemplo bajo la luz)
+        sg,ya,yb=suave; reg2=cv2.GaussianBlur(m.astype(np.float32),(0,0),sg)
+        yy=np.arange(H,dtype=np.float32)[:,None]; wv=np.clip(np.minimum(yy-ya,yb-yy)/(2*sg),0,1)
+        reg=reg*(1-wv)+reg2*wv
     soft=np.clip((reg-0.5+0.25*(nz-0.5))*3+0.5,0,1)
-    for b in bands: acc=np.maximum(acc,soft*np.clip((d-b)/0.06,0,1) if b>0 else soft); tstep()
+    sd=cfg.get('d_blur',{}).get(nm)      # oscuridad suavizada: se descubren manchas enteras y no puntitos sueltos (fondos con textura)
+    dd=cv2.GaussianBlur(d,(0,0),sd) if sd else d
+    for b in bands: acc=np.maximum(acc,soft*np.clip((dd-b)/0.06,0,1) if b>0 else soft); tstep()
 i+=1; acc[:]=1; img=show(orig); save(img,str(i)); SV[i]=F.streams(np.abs(img-prev).max(2),spacing=8,sc=400/W)
 json.dump({'vec':{str(k):v for k,v in VEC.items()},'svec':{str(k):v for k,v in SV.items()},'nl':NL,'n':i},open(f'{TAG}_v.json','w'),separators=(',',':'))
 ims=[cv2.resize(cv2.imread(f'{O}/{j}.png'),(300,int(300*H/W))) for j in range(1,i+1)]

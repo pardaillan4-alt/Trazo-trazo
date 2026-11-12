@@ -417,7 +417,9 @@ def ordenar5(P,Wd,wthr=None,close_u=7.0,near_u=2.6,chica_u=28.0,pegada_u=1e9,pen
         for c in [c for c in comps if c not in grandes]:
             pts=np.vstack([p for p,_ in comps[c]])
             dmin,cb=min(((float(GT[g].query(pts)[0].min()),g) for g in grandes),key=lambda t:t[0])
-            if dmin<=pegada_u: extra.setdefault(cb,[]).extend(comps.pop(c))
+            # solo si es mucho más chica que la grande (una gota, un mechoncito); una figura de tamaño parecido
+            # (el otro ojo, la otra mano) es figura aparte y se termina antes de pasar a la siguiente
+            if dmin<=pegada_u and tam[c]<0.35*tam[cb]: extra.setdefault(cb,[]).extend(comps.pop(c))
     # figuras metidas dentro de otra mucho más grande (mechones de la cara dentro de la cabeza, aletas dentro del cuerpo):
     # son detalles de la grande, se hacen cuando ya está toda la orilla
     orden=sorted([c for c in comps if c>0],key=lambda c:-tam[c]); fills={}
@@ -463,7 +465,8 @@ def ordenar5(P,Wd,wthr=None,close_u=7.0,near_u=2.6,chica_u=28.0,pegada_u=1e9,pen
         nonlocal pen,res
         L=[plen(p) for p,_ in dentro]
         isb=[(l>=26 or (wthr is not None and it[1] is not None and it[1]>=wthr)) for it,l in zip(dentro,L)]
-        for grp in ([it for it,b in zip(dentro,isb) if b],[it for it,b in zip(dentro,isb) if not b]):
+        # los puntitos (pupilas, manchitas) al final, cuando ya está lo que los rodea
+        for grp in ([it for it,b in zip(dentro,isb) if b],[it for it,b in zip(dentro,isb) if not b and not chico(it[0])],[it for it,b in zip(dentro,isb) if not b and chico(it[0])]):
             if not grp: continue
             nn,_=_nn(grp,pen); seq=_mejorar(nn); res+=seq; pen=seq[-1][0][-1]
     if por_figura:

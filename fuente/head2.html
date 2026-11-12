@@ -203,14 +203,16 @@ body.en-estudio .marco{display:none}
 .e-tit span{font-size:var(--t-xs);color:var(--grafito-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .e-acc{display:flex;gap:6px}
 .e-lienzo{grid-area:lienzo;container-type:size;display:flex;align-items:center;justify-content:center;padding:4px 12px 8px;min-height:0;min-width:0}
-.papel{position:relative;width:min(100cqw,calc(100cqh * var(--ar,1)));aspect-ratio:var(--ar,1);max-width:100%;background:var(--papel);border-radius:var(--r-hoja);
+/* los controles de la animación van debajo del dibujo, para no tapar nada (los pies, el piso, las orillas) */
+.hoja-ctl{display:flex;flex-direction:column;align-items:center;gap:8px;max-width:100%}
+.papel{position:relative;width:min(100cqw,calc((100cqh - var(--ctl-h,0px)) * var(--ar,1)));aspect-ratio:var(--ar,1);max-width:100%;background:var(--papel);border-radius:var(--r-hoja);
   box-shadow:var(--sombra-flota);overflow:hidden;touch-action:none}
 .zoomer{position:relative;width:100%;height:100%;transform-origin:0 0;will-change:transform}
 .zoomer svg{display:block;width:100%;height:100%}
 .cargando{position:absolute;inset:0;display:grid;place-items:center;font:700 var(--t-s) var(--f-texto);color:#596074;pointer-events:none}
 .cargando i{width:28px;height:28px;border-radius:50%;border:3px solid rgba(31,35,48,.14);border-top-color:#D63F1E;animation:gira .8s linear infinite;margin:0 auto 10px;display:block}
 @keyframes gira{to{transform:rotate(360deg)}}
-.ctl{position:absolute;left:10px;bottom:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 20px);z-index:2}
+.ctl{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;max-width:100%;min-height:40px;z-index:2}
 .zbtns{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px;z-index:2}
 .cb{width:40px;height:40px;border-radius:50%;border:1px solid var(--papel-ctl-borde);background:var(--papel-ctl);color:var(--papel-ctl-tinta);
   display:grid;place-items:center;cursor:pointer;padding:0;box-shadow:0 2px 8px rgba(20,26,45,.14)}
@@ -220,7 +222,7 @@ body.en-estudio .marco{display:none}
 .vel button{border:0;background:transparent;color:var(--papel-ctl-tinta);font:700 12px/1 var(--f-texto);padding:8px 10px;border-radius:var(--r-pill);cursor:pointer}
 .vel button[aria-pressed="true"]{background:var(--papel-ctl-tinta);color:var(--papel-ctl)}
 .e-panel{grid-area:panel;display:flex;flex-direction:column;gap:12px;min-height:0;padding:4px 12px 12px;overflow:auto}
-.estudio{grid-template-rows:auto min(calc((100vw - 24px) / var(--ar,1) + 12px),56dvh) minmax(0,1fr)}
+.estudio{--ctl-h:48px;grid-template-rows:auto min(calc((100vw - 24px) / var(--ar,1) + 12px + var(--ctl-h)),56dvh) minmax(0,1fr)}
 .mapa-caja{margin-top:auto}
 .lista.oculta{display:none!important}
 .paso{position:relative;background:var(--hoja);border:1px solid var(--borde);border-radius:var(--r-panel);padding:14px 16px 16px;overflow:auto;min-height:0;flex:0 0 auto;max-height:62%}
@@ -302,8 +304,8 @@ body.en-estudio .marco{display:none}
 .enfoque-top,.enfoque-nav{display:none}
 .estudio.enfoque{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);grid-template-areas:"lienzo";background:var(--papel)}
 .estudio.enfoque .e-top,.estudio.enfoque .e-panel{display:none}
-.estudio.enfoque .e-lienzo{padding:0}
-.estudio.enfoque .papel{border-radius:0;box-shadow:none}
+.estudio.enfoque .e-lienzo{padding:calc(62px + env(safe-area-inset-top,0px)) 0 calc(80px + env(safe-area-inset-bottom,0px))}   /* el dibujo queda entre la barra de arriba y los botones de abajo */
+.estudio.enfoque .papel{border-radius:0;box-shadow:none;width:min(100cqw,calc(100cqh * var(--ar,1)))}
 .estudio.enfoque .enfoque-top{display:flex;position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:calc(12px + env(safe-area-inset-left,0px));right:calc(12px + env(safe-area-inset-right,0px));justify-content:space-between;align-items:center;z-index:3;pointer-events:none}
 .estudio.enfoque .enfoque-top>*{pointer-events:auto}
 .estudio.enfoque .enfoque-top span{font:700 var(--t-s) var(--f-texto);color:var(--papel-ctl-tinta);background:var(--papel-ctl);padding:9px 14px;border-radius:var(--r-pill);box-shadow:0 2px 8px rgba(20,26,45,.14)}
@@ -313,7 +315,7 @@ body.en-estudio .marco{display:none}
 .cb.grande{width:56px;height:56px}
 .cb.grande svg{width:24px;height:24px}
 .cb.ir{background:var(--papel-ctl-tinta);color:var(--papel-ctl);border-color:var(--papel-ctl-tinta)}
-@media (max-width:460px){.estudio.enfoque .ctl{bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
+@media (max-width:460px){.estudio.enfoque .ctl{bottom:calc(84px + env(safe-area-inset-bottom,0px))}.estudio.enfoque .e-lienzo{padding-bottom:calc(132px + env(safe-area-inset-bottom,0px))}}
 
 /* ---------- hojas (ajustes, materiales, pasos) ---------- */
 .capa{position:fixed;inset:0;z-index:30;background:var(--velo);display:flex;align-items:flex-end;justify-content:center;animation:velo .2s ease both}

@@ -7,7 +7,7 @@ const LV=[
  {n:5,t:'Maestros',d:'Dibujos largos y detallados. Para tener paciencia y disfrutar.'}
 ];
 const CATS=['Animales','Personas','Paisajes','Juguetes'];
-const NUEVOS=new Set(['dsagrado_lapiz','dballena5','ddelfin5','dgatito5','dperrito5','djirafa']);
+const NUEVOS=new Set(['ddivina','dsagrado_lapiz','dballena5','ddelfin5','dgatito5','dperrito5','djirafa']);
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const app=$('#app'),EST=$('#estudio'),CAPAS=$('#capas');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -248,10 +248,10 @@ function estudioHTML(){
       <button class="ib angosto" data-a="opciones" aria-label="Más opciones">${IC.menu}</button>
     </div>
   </div>
-  <div class="e-lienzo"><div class="papel" id="zpaper"><div class="zoomer" id="zoomer"><svg id="cv" class="cv" viewBox="0 0 400 400" role="img" aria-label="Dibujo paso a paso"></svg></div>
+  <div class="e-lienzo"><div class="hoja-ctl"><div class="papel" id="zpaper"><div class="zoomer" id="zoomer"><svg id="cv" class="cv" viewBox="0 0 400 400" role="img" aria-label="Dibujo paso a paso"></svg></div>
     <div class="zbtns" role="group" aria-label="Acercar"><button class="cb" data-a="zin" aria-label="Acercar">${IC.zin}</button><button class="cb" data-a="zout" aria-label="Alejar">${IC.zout}</button><button class="cb" data-a="zfit" id="bFit" hidden aria-label="Ver todo el dibujo">${IC.zfit}</button></div>
     <div class="enfoque-top"><span id="enfPaso"></span><button class="cb" data-a="enfoque" aria-label="Salir del modo enfoque">${IC.close}</button></div>
-    <div class="enfoque-nav"><button class="cb grande" data-a="prev" aria-label="Paso anterior">${IC.prev}</button><button class="cb grande" data-a="oir" aria-label="Escuchar otra vez">${IC.oir}</button><button class="cb grande ir" data-a="next" aria-label="Siguiente paso">${IC.next}</button></div>
+    <div class="enfoque-nav"><button class="cb grande" data-a="prev" aria-label="Paso anterior">${IC.prev}</button><button class="cb grande" data-a="oir" aria-label="Escuchar otra vez">${IC.oir}</button><button class="cb grande ir" data-a="next" aria-label="Siguiente paso">${IC.next}</button></div></div>
     <div class="ctl" role="group" aria-label="Animación">
       <button class="cb" data-a="pause" id="bPause" aria-label="Pausa">${IC.pause}</button>
       <button class="cb" data-a="replay" aria-label="Repetir el paso">${IC.replay}</button>
