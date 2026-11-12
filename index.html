@@ -370,6 +370,18 @@ select.campo,input[type=range].campo{width:100%}
 select.campo{font:400 var(--t-s) var(--f-texto);padding:11px 12px;border-radius:12px;border:1px solid var(--borde);background:var(--hoja-2);color:var(--grafito)}
 input[type=range].campo{accent-color:var(--trazo)}
 .nota-aj{font-size:var(--t-xs);color:var(--grafito-2)}
+/* voces naturales */
+.nv-lista{display:grid;gap:8px}
+.nv-fila{display:grid;grid-template-columns:40px minmax(0,1fr);gap:4px 12px;align-items:center;padding:10px 12px;border:1px solid var(--borde);border-radius:14px;background:var(--hoja)}
+.nv-fila.usa{border-color:var(--grafito);box-shadow:inset 0 0 0 1px var(--grafito)}
+.nv-av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--mesa-2);color:var(--grafito);font:700 17px/1 var(--f-display)}
+.nv-t{min-width:0;display:flex;flex-direction:column;gap:2px}
+.nv-t b{font:700 var(--t-s)/1.2 var(--f-texto)}
+.nv-t span{font-size:var(--t-xs);color:var(--grafito-2)}
+.nv-acc{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn.chico{min-height:36px;padding:0 14px;font-size:var(--t-s)}
+.nv-barra{flex:1 1 120px;height:8px;border-radius:8px;background:var(--mesa-2);overflow:hidden}
+.nv-barra i{display:block;height:100%;background:var(--hecho);border-radius:8px;transition:width .25s}
 .lista-mat{margin:4px 0 0;padding-left:20px;display:grid;gap:6px}
 .consejos{margin:4px 0 0;padding-left:20px;display:grid;gap:6px}
 
@@ -1074,7 +1086,7 @@ const pine=(x,yb,h,w)=>{
 const poly=(pts)=>P(pts,false);
 
 /* Voz natural (síntesis del dispositivo) y música ambiental generada */
-const SND={voice:true,music:true,vol:.5,rate:.94,vname:'',mood:'suave'};
+const SND={voice:true,music:true,vol:.5,rate:.94,vname:'',mood:'suave',motor:'disp',nv:'mx-f'};
 try{Object.assign(SND,JSON.parse(localStorage.getItem('trazo-snd')||'{}'))}catch(e){}
 const saveSnd=()=>{try{localStorage.setItem('trazo-snd',JSON.stringify(SND))}catch(e){}};
 
@@ -1099,7 +1111,7 @@ function loadVoices(){
 if(TTS){loadVoices();speechSynthesis.onvoiceschanged=loadVoices}
 const pickVoice=()=>VOICES.find(v=>v.name===SND.vname)||VOICES[0]||null;
 let speakTimer=0,speakId=0;
-function stopSpeak(){clearTimeout(speakTimer);speakId++;if(TTS)speechSynthesis.cancel();duck(false)}
+function stopSpeak(){clearTimeout(speakTimer);speakId++;if(TTS)speechSynthesis.cancel();nvCallar();duck(false)}
 /* se habla por frases, con respiros y un ritmo que varía un poco, como una persona */
 function chunks(text){
   const out=[];
@@ -1112,9 +1124,14 @@ function chunks(text){
   return out.filter(Boolean);
 }
 function speak(text,force){
-  if(!TTS||(!SND.voice&&!force))return;
+  if(!SND.voice&&!force)return;
+  if(usaNV()){stopSpeak();nvHablar(text,speakId);return}
+  if(!TTS)return;
   stopSpeak();
-  const my=speakId,parts=chunks(text),v=pickVoice();
+  hablarDisp(text,speakId);
+}
+function hablarDisp(text,my,desde){
+  const parts=chunks(text).slice(desde||0),v=pickVoice();
   speakTimer=setTimeout(()=>{
     let i=0;
     const next=()=>{
@@ -1134,6 +1151,175 @@ function speak(text,force){
     next();
   },90);
 }
+
+/* ---------- Voz natural (las voces de Atril) ----------
+   Modelos VITS de Piper para español de México, generados en el dispositivo con sherpa-onnx y espeak-ng
+   (WebAssembly, en trabajadores). Se descargan una vez y se guardan en este navegador (IndexedDB). */
+const NV_DIR='voz/',NV_V='nv1';
+const NV_CORE=[{f:'voz.wasm',n:13403088},{f:'fonetica.wasm',n:405867},{f:'espeak-es.wasm',n:697085}];
+const NV_VOCES={
+  'mx-f':{nom:'Mujer',nota:'Cálida y pausada, la más natural',parts:5,size:62949322},
+  'mx-m':{nom:'Hombre',nota:'Grave y serena',parts:5,size:63149200},
+  'mx-f-lite':{nom:'Mujer',nota:'Versión ligera',parts:2,size:18304617,lite:true},
+  'mx-m-lite':{nom:'Hombre',nota:'Versión ligera',parts:2,size:18579723,lite:true}};
+const NV_OK=typeof WebAssembly==='object'&&'Worker' in window&&'indexedDB' in window;
+const NV={keys:null,pp:null,tts:null,voz:null,cargando:null,audio:null,dl:null,falla:false,sr:22050};
+const IDB={p:null,
+  db(){return this.p||(this.p=new Promise((res,rej)=>{let r;try{r=indexedDB.open('trazo-voz',1)}catch(e){rej(e);return}
+    r.onupgradeneeded=()=>r.result.createObjectStore('b');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))},
+  async op(modo,fn){const db=await this.db();return new Promise((res,rej)=>{const t=db.transaction('b',modo),q=fn(t.objectStore('b'));
+    t.oncomplete=()=>res(q&&q.result);t.onerror=t.onabort=()=>rej(t.error||new Error('no se pudo guardar'))})},
+  get(k){return this.op('readonly',s=>s.get(k))},put(k,v){return this.op('readwrite',s=>s.put(v,k))},
+  del(k){return this.op('readwrite',s=>s.delete(k))},keys(){return this.op('readonly',s=>s.getAllKeys())}};
+async function nvKeys(){
+  if(NV.keys)return NV.keys;
+  let ks=[];try{ks=await IDB.keys()}catch(e){}
+  NV.keys=new Set((ks||[]).filter(k=>typeof k==='string'&&k.startsWith(NV_V+':')).map(k=>k.slice(NV_V.length+1)));
+  return NV.keys;
+}
+const nvTiene=k=>!!(NV.keys&&NV.keys.has(k));
+const nvInstalada=id=>nvTiene('voz:'+id+':modelo')&&nvTiene('voz:'+id+':tokens')&&NV_CORE.every(c=>nvTiene('base:'+c.f));
+const nvFalta=id=>(nvTiene('voz:'+id+':modelo')?0:NV_VOCES[id].size)+NV_CORE.reduce((a,c)=>a+(nvTiene('base:'+c.f)?0:c.n),0);
+const usaNV=()=>NV_OK&&SND.motor==='nv'&&!NV.falla&&nvInstalada(SND.nv);
+async function nvBajarArchivo(f,signal,onB){
+  let r;try{r=await fetch(NV_DIR+f,{signal})}catch(e){if(e&&e.name==='AbortError')throw e;throw new Error('no hay conexión')}
+  if(!r.ok)throw new Error('el archivo '+f+' no está disponible');
+  if(!r.body||!r.body.getReader){const b=await r.blob();onB(b.size);return b}
+  const rd=r.body.getReader(),ch=[];
+  for(;;){const {done,value}=await rd.read();if(done)break;ch.push(value);onB(value.length)}
+  return new Blob(ch);
+}
+async function nvDescargar(id,onProg){
+  const v=NV_VOCES[id];await nvKeys();
+  const jobs=[];
+  for(const c of NV_CORE)if(!nvTiene('base:'+c.f))jobs.push({k:'base:'+c.f,fs:[c.f],n:c.n});
+  if(!nvTiene('voz:'+id+':modelo'))jobs.push({k:'voz:'+id+':modelo',fs:Array.from({length:v.parts},(_,i)=>id+'.'+i+'.wasm'),n:v.size});
+  if(!nvTiene('voz:'+id+':tokens'))jobs.push({k:'voz:'+id+':tokens',fs:[id+'.tokens.txt'],n:1000});
+  const total=jobs.reduce((a,j)=>a+j.n,0)||1;let hecho=0;
+  const ac=new AbortController();NV.dl={id,ac,frac:0};
+  try{
+    for(const j of jobs){
+      const bl=[];
+      for(const f of j.fs)bl.push(await nvBajarArchivo(f,ac.signal,d=>{hecho+=d;NV.dl.frac=Math.min(1,hecho/total);onProg&&onProg(NV.dl.frac)}));
+      try{await IDB.put(NV_V+':'+j.k,new Blob(bl))}catch(e){throw new Error('no hay espacio suficiente en el navegador')}
+      NV.keys.add(j.k);
+    }
+    try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+    NV.falla=false;return true;
+  }finally{NV.dl=null}
+}
+const nvCancelar=()=>{if(NV.dl)NV.dl.ac.abort()};
+async function nvBorrar(id){
+  if(NV.voz===id)nvApagar();
+  await nvKeys();
+  for(const k of ['voz:'+id+':modelo','voz:'+id+':tokens']){try{await IDB.del(NV_V+':'+k)}catch(e){}NV.keys.delete(k)}
+  if(!Object.keys(NV_VOCES).some(x=>nvTiene('voz:'+x+':modelo'))){
+    for(const c of NV_CORE){try{await IDB.del(NV_V+':base:'+c.f)}catch(e){}NV.keys.delete('base:'+c.f)}
+    if(NV.pp){NV.pp.kill();NV.pp=null}
+  }
+}
+function nvTrabajador(f){
+  const o={pend:new Map(),n:0,dead:false};
+  o.ready=new Promise((res,rej)=>{o._res=res;o._rej=rej});o.ready.catch(()=>{});
+  const falla=m=>{o.dead=true;o._rej(new Error(m));for(const[,cb]of o.pend)cb({error:m});o.pend.clear()};
+  try{o.w=new Worker(NV_DIR+f)}catch(e){falla('el navegador no permite iniciar la voz');return o}
+  o.w.onmessage=e=>{const m=e.data||{};
+    if(m.type==='ready')o._res(m);else if(m.type==='error')falla(m.message||'error');
+    else if(m.type!=='log'){const cb=o.pend.get(m.id);if(cb){o.pend.delete(m.id);cb(m)}}};
+  o.w.onerror=e=>{try{e.preventDefault()}catch(x){}falla('el motor de voz se detuvo')};
+  o.call=(msg,tr)=>new Promise(res=>{if(o.dead){res({error:'el motor de voz se detuvo'});return}const id=++o.n;o.pend.set(id,res);o.w.postMessage(Object.assign({id},msg),tr||[])});
+  o.post=(msg,tr)=>o.w.postMessage(msg,tr||[]);
+  o.kill=()=>{o.dead=true;try{o.w.terminate()}catch(e){}};
+  return o;
+}
+const conTiempo=(p,ms,m)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error(m)),ms))]);
+async function nvBlob(k){const b=await IDB.get(NV_V+':'+k);if(!b){if(NV.keys)NV.keys.delete(k);throw new Error('faltan archivos de la voz; vuelve a descargarla')}return b}
+async function nvIniciar(id){
+  if(NV.tts&&NV.voz===id&&!NV.tts.dead)return true;
+  if(NV.cargando&&NV.voz===id)return NV.cargando;
+  nvApagar();NV.voz=id;
+  const run=(async()=>{
+    await nvKeys();if(!nvInstalada(id))throw new Error('la voz no está descargada');
+    if(!NV.pp||NV.pp.dead){
+      const [fw,es]=await Promise.all([nvBlob('base:fonetica.wasm'),nvBlob('base:espeak-es.wasm')]);
+      const pp=nvTrabajador('fonetica.js'),a=await fw.arrayBuffer(),b=await es.arrayBuffer();
+      if(!pp.dead)pp.post({type:'init',wasm:a,data:b},[a,b]);
+      await conTiempo(pp.ready,45000,'la voz tardó demasiado en cargar');NV.pp=pp;
+    }
+    const [vw,mo,tk]=await Promise.all([nvBlob('base:voz.wasm'),nvBlob('voz:'+id+':modelo'),nvBlob('voz:'+id+':tokens')]);
+    const w=nvTrabajador('voz.js'),wasm=await vw.arrayBuffer(),mb=await mo.arrayBuffer();
+    if(!w.dead)w.post({type:'init',wasm,model:mb,tokens:await tk.text()},[wasm,mb]);
+    const info=await conTiempo(w.ready,90000,'la voz tardó demasiado en cargar');
+    NV.sr=info.sampleRate||22050;
+    if(NV.voz!==id){w.kill();return false}
+    NV.tts=w;return true;
+  })();
+  NV.cargando=run;
+  try{return await run}finally{if(NV.cargando===run)NV.cargando=null}
+}
+function nvApagar(){if(NV.tts){NV.tts.kill();NV.tts=null}NV.voz=null}
+function wavBlob(i16,sr){
+  const buf=new ArrayBuffer(44),v=new DataView(buf),n=i16.length*2,w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
+  w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n,true);
+  return new Blob([buf,i16.buffer],{type:'audio/wav'});
+}
+// recorta los silencios del modelo, iguala el volumen y deja la pausa natural después de la frase
+function nvPost(s,sr,pausa){
+  const thr=.008;let a=0,b=s.length-1;
+  while(a<b&&Math.abs(s[a])<thr)a++;while(b>a&&Math.abs(s[b])<thr)b--;
+  a=Math.max(0,a-Math.round(sr*.025));b=Math.min(s.length-1,b+Math.round(sr*.07));
+  const body=s.subarray(a,b+1);let sum=0,n=0,pk=0;
+  for(let i=0;i<body.length;i++){const x=Math.abs(body[i]);if(x>pk)pk=x;if(x>.02){sum+=x*x;n++}}
+  const rms=n?Math.sqrt(sum/n):.12;let g=Math.max(.6,Math.min(3,.15/rms));if(pk*g>.93)g=.93/pk;
+  const lead=Math.round(sr*.015),pad=Math.round(sr*Math.max(0,pausa)/1000),out=new Int16Array(lead+body.length+pad),fade=Math.max(1,Math.min(Math.round(sr*.006),body.length>>2));
+  for(let i=0;i<body.length;i++){let v=body[i]*g;if(i<fade)v*=i/fade;else if(i>body.length-fade)v*=(body.length-i)/fade;out[lead+i]=Math.max(-1,Math.min(1,v))*32767}
+  return URL.createObjectURL(wavBlob(out,sr));
+}
+const NV_CACHE=new Map();
+async function nvClip(t,pausa){
+  const k=NV.voz+'|'+SND.rate+'|'+pausa+'|'+t;
+  if(NV_CACHE.has(k))return NV_CACHE.get(k);
+  const p=(async()=>{
+    const ph=await NV.pp.call({type:'ph',text:t,voice:'es-419'});if(ph.error)throw new Error(ph.error);
+    const cps=(ph.sentences&&ph.sentences[0])||[];if(!cps.length)return null;
+    const r=await NV.tts.call({type:'gen',codepoints:cps,speed:Math.max(.6,Math.min(1.4,SND.rate))});if(r.error)throw new Error(r.error);
+    return nvPost(r.samples,r.sampleRate||NV.sr,pausa);
+  })();
+  NV_CACHE.set(k,p);p.catch(()=>NV_CACHE.delete(k));
+  if(NV_CACHE.size>40){const k0=NV_CACHE.keys().next().value;const v0=NV_CACHE.get(k0);NV_CACHE.delete(k0);v0.then(u=>u&&URL.revokeObjectURL(u),()=>{})}
+  return p;
+}
+function nvAudio(){if(!NV.audio){const a=new Audio();a.preload='auto';a.setAttribute('playsinline','');NV.audio=a}return NV.audio}
+function nvCallar(){const a=NV.audio;if(a){a.onended=null;a.onerror=null;try{a.pause()}catch(e){}}}
+// lee frase por frase; mientras suena una, ya se prepara la siguiente
+async function nvHablar(text,my){
+  const parts=chunks(text);if(!parts.length)return;
+  const pausa=i=>i>=parts.length-1?0:/[.!?]$/.test(parts[i])?260:120;
+  let i=0;
+  try{
+    await nvIniciar(SND.nv);if(my!==speakId)return;
+    const a=nvAudio();
+    const sig=async()=>{
+      if(my!==speakId)return;
+      if(i>=parts.length){duck(false);return}
+      const url=await nvClip(parts[i],pausa(i));if(my!==speakId)return;
+      if(i+1<parts.length)nvClip(parts[i+1],pausa(i+1)).catch(()=>{});
+      i++;if(!url){sig();return}
+      a.onended=()=>{if(my===speakId)sig()};a.onerror=()=>{if(my===speakId)sig()};
+      a.src=url;a.volume=1;duck(true);
+      try{await a.play()}catch(e){if(my===speakId)duck(false)}
+    };
+    await sig();
+  }catch(e){
+    if(my!==speakId)return;
+    console.warn('Voz natural',e);NV.falla=true;nvApagar();
+    if(window.avisoVoz)avisoVoz('No se pudo usar la voz natural en este dispositivo. Sigo con la voz del dispositivo.');
+    if(TTS)hablarDisp(text,my,Math.max(0,i-1));
+  }
+}
+
+if(NV_OK)nvKeys();
 
 /* ---------- Música ---------- */
 let AC=null,master,duckG,verb,musicOn=false,timer=0,nextChord=0,nextNote=0,chordI=0;
@@ -1937,7 +2123,7 @@ function setEnfoque(on){
   ENFOQUE=on;const f=$('.estudio');if(!f)return;
   f.classList.toggle('enfoque',on);
   if(on){
-    if(TTS&&!SND.voice){SND.voice=true;saveSnd();syncSonido()}
+    if(HAY_VOZ&&!SND.voice){SND.voice=true;saveSnd();syncSonido()}
     if(FS_OK&&!(document.fullscreenElement||document.webkitFullscreenElement))toggleFull();
     say();
   }else exitFull();
@@ -1949,6 +2135,7 @@ function setPaused(p){
   cv.classList.toggle('paused',p);
   try{p?cv.pauseAnimations():cv.unpauseAnimations()}catch(e){}
   if(TTS){try{p?speechSynthesis.pause():speechSynthesis.resume()}catch(e){}}
+  if(NV.audio&&NV.audio.src){try{p?NV.audio.pause():(NV.audio.onended&&NV.audio.play().catch(()=>{}))}catch(e){}}
   if(b){b.innerHTML=p?IC.play:IC.pause;b.setAttribute('aria-label',p?'Continuar':'Pausa');b.classList.toggle('on',p)}
 }
 function renderLienzo(){
@@ -2068,11 +2255,13 @@ function cerrarCapa(silencio){if(!CAPAS.innerHTML)return;CAPAS.innerHTML='';if(!
 const cabHoja=(t,id)=>`<div class="ph-cab"><h2 id="${id}">${t}</h2><button class="ib" data-a="cerrar-capa" aria-label="Cerrar">${IC.close}</button></div>`;
 function ajustesHTML(){
   return `<div class="panel-hoja" role="dialog" aria-modal="true" aria-labelledby="ajT">${cabHoja('Ajustes','ajT')}
-    <section class="grupo-aj"><div class="fila"><h3>Voz que explica</h3><button class="interruptor" role="switch" data-a="voz" data-sync="voz" aria-checked="${SND.voice}" aria-label="Voz que explica"${TTS?'':' disabled'}></button></div>
-      <label class="nota-aj" for="vSel">Voz</label><select class="campo" id="vSel"></select>
+    <section class="grupo-aj"><div class="fila"><h3>Voz que explica</h3><button class="interruptor" role="switch" data-a="voz" data-sync="voz" aria-checked="${SND.voice}" aria-label="Voz que explica"${HAY_VOZ?'':' disabled'}></button></div>
+      ${NV_OK?`<div class="segm" role="group" aria-label="Tipo de voz"><button data-a="motor" data-m="disp" aria-pressed="${SND.motor!=='nv'}">Del dispositivo</button><button data-a="motor" data-m="nv" aria-pressed="${SND.motor==='nv'}">Voz natural</button></div>`:''}
+      <div id="vDisp"${SND.motor==='nv'&&NV_OK?' hidden':''}><label class="nota-aj" for="vSel">Voz</label><select class="campo" id="vSel"></select>
+        <p class="nota-aj">${TTS?'La voz viene de tu dispositivo. Las que dicen “Natural”, “Online” o “Google” suenan más humanas; en iPhone, las “Mejoradas”.':'Este navegador no tiene voz integrada. Puedes descargar la voz natural.'}</p></div>
+      <div id="vNat"${SND.motor==='nv'&&NV_OK?'':' hidden'}></div>
       <label class="nota-aj" for="vRate">Velocidad de la voz</label><input class="campo" type="range" id="vRate" min=".7" max="1.2" step=".02" value="${SND.rate}">
-      <button class="btn sec" data-a="probar-voz"${TTS?'':' disabled'}>${IC.oir}Escuchar un ejemplo</button>
-      <p class="nota-aj" id="vNota">${TTS?'La voz viene de tu dispositivo. Las que dicen “Natural”, “Online” o “Google” suenan más humanas; en iPhone, las “Mejoradas”.':'Este navegador no tiene voz integrada, pero puedes seguir los pasos leyendo.'}</p></section>
+      <button class="btn sec" data-a="probar-voz"${HAY_VOZ?'':' disabled'}>${IC.oir}Escuchar un ejemplo</button></section>
     <section class="grupo-aj"><div class="fila"><h3>Música</h3><button class="interruptor" role="switch" data-a="mus" data-sync="mus" aria-checked="${SND.music}" aria-label="Música de fondo"></button></div>
       <div class="segm" role="group" aria-label="Tipo de música">${[['suave','Suave'],['bosque','Bosque'],['piano','Piano']].map(([m,n])=>`<button data-a="mood" data-m="${m}" aria-pressed="${SND.mood===m}">${n}</button>`).join('')}</div>
       <label class="nota-aj" for="vVol">Volumen de la música</label><input class="campo" type="range" id="vVol" min="0" max="1" step=".05" value="${SND.vol}"></section>
@@ -2080,8 +2269,32 @@ function ajustesHTML(){
     <section class="grupo-aj"><h3>Apariencia</h3><div class="segm" role="group" aria-label="Apariencia">${[['auto','Automática'],['light','Clara'],['dark','Oscura']].map(([t,n])=>`<button data-a="tema" data-t="${t}" aria-pressed="${st.tema===t}">${n}</button>`).join('')}</div></section>
   </div>`;
 }
+const HAY_VOZ=TTS||NV_OK;
+const MB=n=>Math.round(n/1e6)+' MB';
+// las cuatro voces naturales: se descargan una vez y quedan en este navegador
+function pintarNV(){
+  const box=$('#vNat');if(!box)return;
+  const fila=id=>{const v=NV_VOCES[id],ok=nvInstalada(id),bajando=NV.dl&&NV.dl.id===id,usa=SND.nv===id&&ok;
+    let acc;
+    if(bajando)acc=`<div class="nv-barra"><i style="width:${Math.round(NV.dl.frac*100)}%"></i></div><button class="btn sec chico" data-a="nv-cancelar">Cancelar</button>`;
+    else if(ok)acc=`<button class="btn chico${usa?'':' sec'}" data-a="nv-usar" data-v="${id}" aria-pressed="${usa}">${usa?'En uso':'Usar'}</button><button class="btn sec chico" data-a="nv-borrar" data-v="${id}" aria-label="Borrar la voz ${v.nom}${v.lite?' ligera':''}">Borrar</button>`;
+    else acc=`<button class="btn sec chico" data-a="nv-bajar" data-v="${id}"${NV.dl?' disabled':''}>Descargar · ${MB(nvFalta(id))}</button>`;
+    return `<div class="nv-fila${usa?' usa':''}"><div class="nv-av">${v.nom[0]}</div><div class="nv-t"><b>${v.nom}${v.lite?' · ligera':''}</b><span>${v.nota} · México</span></div><div class="nv-acc">${acc}</div></div>`};
+  box.innerHTML=`<div class="nv-lista">${Object.keys(NV_VOCES).map(fila).join('')}</div>
+    <p class="nota-aj">${NV.falla?'La voz natural no funcionó en este dispositivo; por ahora se usa la del dispositivo. ':''}Son las mismas voces de Atril. Se descargan una sola vez, se guardan en este navegador y funcionan sin internet. La ligera pesa menos y suena casi igual.</p>`;
+}
+window.avisoVoz=t=>{aviso(t);pintarNV()};
+async function nvAccion(a,id){
+  if(a==='nv-bajar'){
+    const t0=Date.now();let pt=0;
+    try{pintarNV();await nvDescargar(id,()=>{if(Date.now()-pt>250){pt=Date.now();pintarNV()}});SND.nv=id;SND.motor='nv';saveSnd();pintarNV();aviso('Voz lista');speak('Hola, vamos a dibujar juntos.',true)}
+    catch(e){pintarNV();if(!(e&&e.name==='AbortError'))aviso('No se pudo descargar: '+(e.message||e))}
+  }else if(a==='nv-cancelar'){nvCancelar()}
+  else if(a==='nv-usar'){SND.nv=id;SND.motor='nv';NV.falla=false;saveSnd();pintarNV();speak('Hola, vamos a dibujar juntos.',true)}
+  else if(a==='nv-borrar'){await nvBorrar(id);if(SND.nv===id){const o=Object.keys(NV_VOCES).find(nvInstalada);if(o)SND.nv=o}saveSnd();pintarNV();aviso('Voz borrada')}
+}
 function abrirAjustes(){
-  abrirCapa(ajustesHTML(),true);fillVoiceList();
+  abrirCapa(ajustesHTML(),true);fillVoiceList();if(NV_OK)nvKeys().then(pintarNV);
   const vS=$('#vSel'),vR=$('#vRate'),vV=$('#vVol');
   vS.onchange=()=>{SND.vname=vS.value;saveSnd();speak('Hola, vamos a dibujar juntos.',true)};
   vR.oninput=()=>{SND.rate=+vR.value;saveSnd()};
@@ -2115,10 +2328,10 @@ function listaHTML(){
 
 /* ---------- sonido ---------- */
 function syncSonido(){
-  $$('[data-sync="voz"]').forEach(b=>{b.hasAttribute('role')?b.setAttribute('aria-checked',String(SND.voice)):b.setAttribute('aria-pressed',String(SND.voice));if(!TTS)b.disabled=true});
+  $$('[data-sync="voz"]').forEach(b=>{b.hasAttribute('role')?b.setAttribute('aria-checked',String(SND.voice)):b.setAttribute('aria-pressed',String(SND.voice));if(!HAY_VOZ)b.disabled=true});
   $$('[data-sync="mus"]').forEach(b=>b.hasAttribute('role')?b.setAttribute('aria-checked',String(SND.music)):b.setAttribute('aria-pressed',String(SND.music)));
 }
-function toggleVoz(){if(!TTS)return;SND.voice=!SND.voice;if(!SND.voice)stopSpeak();else if(st.view==='studio')say();saveSnd();syncSonido();aviso(SND.voice?'Voz encendida':'Voz apagada')}
+function toggleVoz(){if(!HAY_VOZ)return;SND.voice=!SND.voice;if(!SND.voice)stopSpeak();else if(st.view==='studio')say();saveSnd();syncSonido();aviso(SND.voice?'Voz encendida':'Voz apagada')}
 function toggleMus(){SND.music=!SND.music;if(SND.music)startMusic();else stopMusic();saveSnd();syncSonido();aviso(SND.music?'Música encendida':'Música apagada')}
 
 /* ---------- direcciones (#dibujo-…): el botón atrás del celular regresa a la galería ---------- */
@@ -2145,6 +2358,8 @@ document.addEventListener('click',e=>{
   if(a==='voz'){toggleVoz();return}
   if(a==='mus'){toggleMus();return}
   if(a==='ajustes'){abrirAjustes();return}
+  if(a==='motor'){SND.motor=b.dataset.m;NV.falla=false;saveSnd();$$('[data-a="motor"]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.m===SND.motor)));const d=$('#vDisp'),n=$('#vNat');if(d)d.hidden=SND.motor==='nv';if(n)n.hidden=SND.motor!=='nv';pintarNV();if(SND.motor==='disp'||nvInstalada(SND.nv))speak('Hola, vamos a dibujar juntos.',true);return}
+  if(a.startsWith('nv-')){nvAccion(a,b.dataset.v);return}
   if(a==='probar-voz'){speak('Hola, vamos a dibujar juntos. Primero, traza un óvalo suave, casi sin apretar el lápiz.',true);return}
   if(a==='mood'){SND.mood=b.dataset.m;SND.music=true;stopMusic();setTimeout(startMusic,450);saveSnd();syncSonido();$$('[data-a="mood"]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.m===SND.mood)));return}
   if(a==='tema'){st.tema=b.dataset.t;save();aplicarTema();$$('[data-a="tema"]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.t===st.tema)));return}

@@ -339,7 +339,7 @@ function setEnfoque(on){
   ENFOQUE=on;const f=$('.estudio');if(!f)return;
   f.classList.toggle('enfoque',on);
   if(on){
-    if(TTS&&!SND.voice){SND.voice=true;saveSnd();syncSonido()}
+    if(HAY_VOZ&&!SND.voice){SND.voice=true;saveSnd();syncSonido()}
     if(FS_OK&&!(document.fullscreenElement||document.webkitFullscreenElement))toggleFull();
     say();
   }else exitFull();
@@ -351,6 +351,7 @@ function setPaused(p){
   cv.classList.toggle('paused',p);
   try{p?cv.pauseAnimations():cv.unpauseAnimations()}catch(e){}
   if(TTS){try{p?speechSynthesis.pause():speechSynthesis.resume()}catch(e){}}
+  if(NV.audio&&NV.audio.src){try{p?NV.audio.pause():(NV.audio.onended&&NV.audio.play().catch(()=>{}))}catch(e){}}
   if(b){b.innerHTML=p?IC.play:IC.pause;b.setAttribute('aria-label',p?'Continuar':'Pausa');b.classList.toggle('on',p)}
 }
 function renderLienzo(){
@@ -470,11 +471,13 @@ function cerrarCapa(silencio){if(!CAPAS.innerHTML)return;CAPAS.innerHTML='';if(!
 const cabHoja=(t,id)=>`<div class="ph-cab"><h2 id="${id}">${t}</h2><button class="ib" data-a="cerrar-capa" aria-label="Cerrar">${IC.close}</button></div>`;
 function ajustesHTML(){
   return `<div class="panel-hoja" role="dialog" aria-modal="true" aria-labelledby="ajT">${cabHoja('Ajustes','ajT')}
-    <section class="grupo-aj"><div class="fila"><h3>Voz que explica</h3><button class="interruptor" role="switch" data-a="voz" data-sync="voz" aria-checked="${SND.voice}" aria-label="Voz que explica"${TTS?'':' disabled'}></button></div>
-      <label class="nota-aj" for="vSel">Voz</label><select class="campo" id="vSel"></select>
+    <section class="grupo-aj"><div class="fila"><h3>Voz que explica</h3><button class="interruptor" role="switch" data-a="voz" data-sync="voz" aria-checked="${SND.voice}" aria-label="Voz que explica"${HAY_VOZ?'':' disabled'}></button></div>
+      ${NV_OK?`<div class="segm" role="group" aria-label="Tipo de voz"><button data-a="motor" data-m="disp" aria-pressed="${SND.motor!=='nv'}">Del dispositivo</button><button data-a="motor" data-m="nv" aria-pressed="${SND.motor==='nv'}">Voz natural</button></div>`:''}
+      <div id="vDisp"${SND.motor==='nv'&&NV_OK?' hidden':''}><label class="nota-aj" for="vSel">Voz</label><select class="campo" id="vSel"></select>
+        <p class="nota-aj">${TTS?'La voz viene de tu dispositivo. Las que dicen “Natural”, “Online” o “Google” suenan más humanas; en iPhone, las “Mejoradas”.':'Este navegador no tiene voz integrada. Puedes descargar la voz natural.'}</p></div>
+      <div id="vNat"${SND.motor==='nv'&&NV_OK?'':' hidden'}></div>
       <label class="nota-aj" for="vRate">Velocidad de la voz</label><input class="campo" type="range" id="vRate" min=".7" max="1.2" step=".02" value="${SND.rate}">
-      <button class="btn sec" data-a="probar-voz"${TTS?'':' disabled'}>${IC.oir}Escuchar un ejemplo</button>
-      <p class="nota-aj" id="vNota">${TTS?'La voz viene de tu dispositivo. Las que dicen “Natural”, “Online” o “Google” suenan más humanas; en iPhone, las “Mejoradas”.':'Este navegador no tiene voz integrada, pero puedes seguir los pasos leyendo.'}</p></section>
+      <button class="btn sec" data-a="probar-voz"${HAY_VOZ?'':' disabled'}>${IC.oir}Escuchar un ejemplo</button></section>
     <section class="grupo-aj"><div class="fila"><h3>Música</h3><button class="interruptor" role="switch" data-a="mus" data-sync="mus" aria-checked="${SND.music}" aria-label="Música de fondo"></button></div>
       <div class="segm" role="group" aria-label="Tipo de música">${[['suave','Suave'],['bosque','Bosque'],['piano','Piano']].map(([m,n])=>`<button data-a="mood" data-m="${m}" aria-pressed="${SND.mood===m}">${n}</button>`).join('')}</div>
       <label class="nota-aj" for="vVol">Volumen de la música</label><input class="campo" type="range" id="vVol" min="0" max="1" step=".05" value="${SND.vol}"></section>
@@ -482,8 +485,32 @@ function ajustesHTML(){
     <section class="grupo-aj"><h3>Apariencia</h3><div class="segm" role="group" aria-label="Apariencia">${[['auto','Automática'],['light','Clara'],['dark','Oscura']].map(([t,n])=>`<button data-a="tema" data-t="${t}" aria-pressed="${st.tema===t}">${n}</button>`).join('')}</div></section>
   </div>`;
 }
+const HAY_VOZ=TTS||NV_OK;
+const MB=n=>Math.round(n/1e6)+' MB';
+// las cuatro voces naturales: se descargan una vez y quedan en este navegador
+function pintarNV(){
+  const box=$('#vNat');if(!box)return;
+  const fila=id=>{const v=NV_VOCES[id],ok=nvInstalada(id),bajando=NV.dl&&NV.dl.id===id,usa=SND.nv===id&&ok;
+    let acc;
+    if(bajando)acc=`<div class="nv-barra"><i style="width:${Math.round(NV.dl.frac*100)}%"></i></div><button class="btn sec chico" data-a="nv-cancelar">Cancelar</button>`;
+    else if(ok)acc=`<button class="btn chico${usa?'':' sec'}" data-a="nv-usar" data-v="${id}" aria-pressed="${usa}">${usa?'En uso':'Usar'}</button><button class="btn sec chico" data-a="nv-borrar" data-v="${id}" aria-label="Borrar la voz ${v.nom}${v.lite?' ligera':''}">Borrar</button>`;
+    else acc=`<button class="btn sec chico" data-a="nv-bajar" data-v="${id}"${NV.dl?' disabled':''}>Descargar · ${MB(nvFalta(id))}</button>`;
+    return `<div class="nv-fila${usa?' usa':''}"><div class="nv-av">${v.nom[0]}</div><div class="nv-t"><b>${v.nom}${v.lite?' · ligera':''}</b><span>${v.nota} · México</span></div><div class="nv-acc">${acc}</div></div>`};
+  box.innerHTML=`<div class="nv-lista">${Object.keys(NV_VOCES).map(fila).join('')}</div>
+    <p class="nota-aj">${NV.falla?'La voz natural no funcionó en este dispositivo; por ahora se usa la del dispositivo. ':''}Son las mismas voces de Atril. Se descargan una sola vez, se guardan en este navegador y funcionan sin internet. La ligera pesa menos y suena casi igual.</p>`;
+}
+window.avisoVoz=t=>{aviso(t);pintarNV()};
+async function nvAccion(a,id){
+  if(a==='nv-bajar'){
+    const t0=Date.now();let pt=0;
+    try{pintarNV();await nvDescargar(id,()=>{if(Date.now()-pt>250){pt=Date.now();pintarNV()}});SND.nv=id;SND.motor='nv';saveSnd();pintarNV();aviso('Voz lista');speak('Hola, vamos a dibujar juntos.',true)}
+    catch(e){pintarNV();if(!(e&&e.name==='AbortError'))aviso('No se pudo descargar: '+(e.message||e))}
+  }else if(a==='nv-cancelar'){nvCancelar()}
+  else if(a==='nv-usar'){SND.nv=id;SND.motor='nv';NV.falla=false;saveSnd();pintarNV();speak('Hola, vamos a dibujar juntos.',true)}
+  else if(a==='nv-borrar'){await nvBorrar(id);if(SND.nv===id){const o=Object.keys(NV_VOCES).find(nvInstalada);if(o)SND.nv=o}saveSnd();pintarNV();aviso('Voz borrada')}
+}
 function abrirAjustes(){
-  abrirCapa(ajustesHTML(),true);fillVoiceList();
+  abrirCapa(ajustesHTML(),true);fillVoiceList();if(NV_OK)nvKeys().then(pintarNV);
   const vS=$('#vSel'),vR=$('#vRate'),vV=$('#vVol');
   vS.onchange=()=>{SND.vname=vS.value;saveSnd();speak('Hola, vamos a dibujar juntos.',true)};
   vR.oninput=()=>{SND.rate=+vR.value;saveSnd()};
@@ -517,10 +544,10 @@ function listaHTML(){
 
 /* ---------- sonido ---------- */
 function syncSonido(){
-  $$('[data-sync="voz"]').forEach(b=>{b.hasAttribute('role')?b.setAttribute('aria-checked',String(SND.voice)):b.setAttribute('aria-pressed',String(SND.voice));if(!TTS)b.disabled=true});
+  $$('[data-sync="voz"]').forEach(b=>{b.hasAttribute('role')?b.setAttribute('aria-checked',String(SND.voice)):b.setAttribute('aria-pressed',String(SND.voice));if(!HAY_VOZ)b.disabled=true});
   $$('[data-sync="mus"]').forEach(b=>b.hasAttribute('role')?b.setAttribute('aria-checked',String(SND.music)):b.setAttribute('aria-pressed',String(SND.music)));
 }
-function toggleVoz(){if(!TTS)return;SND.voice=!SND.voice;if(!SND.voice)stopSpeak();else if(st.view==='studio')say();saveSnd();syncSonido();aviso(SND.voice?'Voz encendida':'Voz apagada')}
+function toggleVoz(){if(!HAY_VOZ)return;SND.voice=!SND.voice;if(!SND.voice)stopSpeak();else if(st.view==='studio')say();saveSnd();syncSonido();aviso(SND.voice?'Voz encendida':'Voz apagada')}
 function toggleMus(){SND.music=!SND.music;if(SND.music)startMusic();else stopMusic();saveSnd();syncSonido();aviso(SND.music?'Música encendida':'Música apagada')}
 
 /* ---------- direcciones (#dibujo-…): el botón atrás del celular regresa a la galería ---------- */
@@ -547,6 +574,8 @@ document.addEventListener('click',e=>{
   if(a==='voz'){toggleVoz();return}
   if(a==='mus'){toggleMus();return}
   if(a==='ajustes'){abrirAjustes();return}
+  if(a==='motor'){SND.motor=b.dataset.m;NV.falla=false;saveSnd();$$('[data-a="motor"]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.m===SND.motor)));const d=$('#vDisp'),n=$('#vNat');if(d)d.hidden=SND.motor==='nv';if(n)n.hidden=SND.motor!=='nv';pintarNV();if(SND.motor==='disp'||nvInstalada(SND.nv))speak('Hola, vamos a dibujar juntos.',true);return}
+  if(a.startsWith('nv-')){nvAccion(a,b.dataset.v);return}
   if(a==='probar-voz'){speak('Hola, vamos a dibujar juntos. Primero, traza un óvalo suave, casi sin apretar el lápiz.',true);return}
   if(a==='mood'){SND.mood=b.dataset.m;SND.music=true;stopMusic();setTimeout(startMusic,450);saveSnd();syncSonido();$$('[data-a="mood"]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.m===SND.mood)));return}
   if(a==='tema'){st.tema=b.dataset.t;save();aplicarTema();$$('[data-a="tema"]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.t===st.tema)));return}
