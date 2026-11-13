@@ -486,6 +486,25 @@ def ordenar5(P,Wd,wthr=None,close_u=7.0,near_u=2.6,chica_u=28.0,pegada_u=1e9,pen
     while pend:
         j=min(pend,key=lambda j:float(np.min(np.linalg.norm(pts_of(info[j][1])-pen,axis=1)))); pend.remove(j); hacer_dentro(info[j][1])
     return res
+def niveles(J,JW,min_n=25):
+    """Reparte los trazos de un paso en tres niveles, como dibuja un artista:
+    1) las líneas principales (contornos, tronco, orillas): las más largas y fuertes, hasta la mitad de la tinta del paso;
+    2) las líneas medianas (ramas, mechones grandes, pliegues);
+    3) los detalles finos (pelitos, arruguitas, puntitos, texturas).
+    Los pasos con pocos trazos se dejan en un solo nivel."""
+    if len(J)<min_n: return [(J,JW)]
+    L=np.array([plen(p) for p in J]); ws=np.array([w if w is not None else np.nan for w in JW],float)
+    wm=np.nanmedian(ws) if np.isfinite(ws).any() else 1.0
+    fw=np.where(np.isfinite(ws),np.clip(ws/max(wm,1e-6),0.6,1.6),1.0)
+    imp=L*fw; orden=np.argsort(-imp); tot=L.sum(); acc=0; nivel=np.zeros(len(J),int)
+    for i in orden:
+        nivel[i]=0 if acc<0.5*tot else (1 if acc<0.82*tot else 2); acc+=L[i]
+    nivel[(L<6)&(nivel<2)]=2                              # lo muy cortito siempre es detalle
+    out=[]
+    for k in range(3):
+        ix=[i for i in range(len(J)) if nivel[i]==k]
+        if ix: out.append(([J[i] for i in ix],[JW[i] for i in ix]))
+    return out
 def procesar_paso5(vk,wthr,por_figura=True):
     """Un 4.o valor en cada trazo (grupo) da el orden de las partes de un paso compuesto
     (por ejemplo: corazón, corona, llamas y cruz): cada grupo se termina antes de empezar el siguiente."""
@@ -495,8 +514,10 @@ def procesar_paso5(vk,wthr,por_figura=True):
     R=[]; pen=None
     for g in sorted(set(Gr)):
         Pg=[p for p,gg in zip(P,Gr) if gg==g]; Wg=[w for w,gg in zip(Wd,Gr) if gg==g]
-        J,JW=unir(Pg,Wg); Rg=ordenar5(J,JW,wthr=wthr,pen=pen,por_figura=por_figura)
-        if Rg: R+=Rg; pen=Rg[-1][0][-1]
+        J,JW=unir(Pg,Wg)
+        for Jt,JWt in niveles(J,JW):      # primero lo importante (líneas largas y fuertes), al final los detalles finos
+            Rg=ordenar5(Jt,JWt,wthr=wthr,pen=pen,por_figura=por_figura)
+            if Rg: R+=Rg; pen=Rg[-1][0][-1]
     out=[]
     for p,w in R:
         e=[to_d(p),round(plen(p),1)]
