@@ -60,6 +60,7 @@ def pmask(names):
         for poly in (POL[n] if n in POL else [sh[1] for sh in cfg['zonas'][n]]): cv2.fillPoly(m,[np.array(poly,np.int32)],1)
     return m
 def figura():
+    if cfg.get('figura_todo'): return np.ones((H,W),np.uint8)
     if np.median(np.r_[L[0,:],L[-1,:],L[:,0],L[:,-1]])<200: return np.ones((H,W),np.uint8)   # fondo oscuro: todo es parte del dibujo
     f=(cv2.GaussianBlur(L,(0,0),1.2)<246).astype(np.uint8)
     f=cv2.morphologyEx(f,cv2.MORPH_CLOSE,cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(15,15)))
@@ -76,6 +77,15 @@ for nm,steps,bands,*op in cfg['regiones']:
         m=pmask(steps['mas'])&(1-pmask(steps.get('menos',[])))&FIG&(1-usado)
         if steps.get('silueta'):      # y dentro del contorno real de esas partes (sin cuadros alrededor)
             m&=cv2.dilate(silueta2(steps['silueta']),cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)))
+        if steps.get('envolvente'):     # [k, pasos]: la forma llena que cubren los trazos de esas partes (cabeza y pelo completos)
+            k_,nms=steps['envolvente']; em=np.zeros((H,W),np.uint8)
+            for st_ in nms:
+                for p_ in GL.get(st_,[]): cv2.polylines(em,[np.round(p_).astype(np.int32)],False,1,3)
+            em=cv2.morphologyEx(em,cv2.MORPH_CLOSE,cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(k_,k_)))
+            cs_,_=cv2.findContours(em,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE); em=np.zeros((H,W),np.uint8)
+            cs_=[c_ for c_ in cs_ if cv2.contourArea(c_)>200]
+            if cs_: cv2.fillPoly(em,[cv2.convexHull(np.vstack(cs_))],1)      # la forma completa aunque el contorno tenga huecos
+            m&=em
         if steps.get('mas_silueta'):  # partes que van completas aunque se salgan del polígono (por ejemplo, las manos)
             m|=cv2.dilate(silueta2(steps['mas_silueta']),cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5)))&FIG&(1-usado)
         if steps.get('mas_color'):    # y lo que tiene el color de esa parte (la piel de las manos), dentro de sus polígonos

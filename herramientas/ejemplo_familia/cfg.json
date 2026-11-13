@@ -1,0 +1,704 @@
+{
+ "H": 1200,
+ "OW": 720,
+ "th": 200,
+ "cerca": 3,
+ "tramo_min": 10,
+ "zonas": {
+  "Los ojos y las cejas del papá": [
+   [
+    "p",
+    [
+     [
+      418,
+      585
+     ],
+     [
+      632,
+      585
+     ],
+     [
+      632,
+      662
+     ],
+     [
+      418,
+      662
+     ]
+    ]
+   ]
+  ],
+  "La nariz y la boca del papá": [
+   [
+    "p",
+    [
+     [
+      425,
+      662
+     ],
+     [
+      612,
+      662
+     ],
+     [
+      612,
+      808
+     ],
+     [
+      425,
+      808
+     ]
+    ]
+   ]
+  ],
+  "Los ojos y las cejas del niño de adelante": [
+   [
+    "p",
+    [
+     [
+      208,
+      842
+     ],
+     [
+      362,
+      842
+     ],
+     [
+      362,
+      912
+     ],
+     [
+      208,
+      912
+     ]
+    ]
+   ]
+  ],
+  "La nariz y la boca del niño de adelante": [
+   [
+    "p",
+    [
+     [
+      198,
+      912
+     ],
+     [
+      345,
+      912
+     ],
+     [
+      345,
+      1035
+     ],
+     [
+      198,
+      1035
+     ]
+    ]
+   ]
+  ],
+  "La cabeza y el cabello del niño de adelante": [
+   [
+    "p",
+    [
+     [
+      160,
+      800
+     ],
+     [
+      205,
+      738
+     ],
+     [
+      262,
+      713
+     ],
+     [
+      330,
+      707
+     ],
+     [
+      392,
+      712
+     ],
+     [
+      402,
+      767
+     ],
+     [
+      465,
+      848
+     ],
+     [
+      475,
+      960
+     ],
+     [
+      440,
+      1000
+     ],
+     [
+      400,
+      1070
+     ],
+     [
+      330,
+      1097
+     ],
+     [
+      230,
+      1087
+     ],
+     [
+      172,
+      1040
+     ],
+     [
+      150,
+      940
+     ]
+    ]
+   ]
+  ],
+  "La cabeza y el cabello del papá": [
+   [
+    "p",
+    [
+     [
+      385,
+      395
+     ],
+     [
+      560,
+      388
+     ],
+     [
+      650,
+      405
+     ],
+     [
+      705,
+      465
+     ],
+     [
+      738,
+      560
+     ],
+     [
+      740,
+      795
+     ],
+     [
+      640,
+      808
+     ],
+     [
+      562,
+      905
+     ],
+     [
+      478,
+      905
+     ],
+     [
+      455,
+      890
+     ],
+     [
+      425,
+      860
+     ],
+     [
+      406,
+      820
+     ],
+     [
+      398,
+      770
+     ],
+     [
+      392,
+      700
+     ],
+     [
+      380,
+      600
+     ]
+    ]
+   ]
+  ],
+  "El niño de atrás": [
+   [
+    "p",
+    [
+     [
+      200,
+      415
+     ],
+     [
+      300,
+      410
+     ],
+     [
+      394,
+      445
+     ],
+     [
+      400,
+      560
+     ],
+     [
+      395,
+      705
+     ],
+     [
+      330,
+      707
+     ],
+     [
+      262,
+      713
+     ],
+     [
+      235,
+      712
+     ],
+     [
+      198,
+      640
+     ],
+     [
+      188,
+      560
+     ],
+     [
+      193,
+      470
+     ]
+    ]
+   ]
+  ],
+  "La camisa y el collar del papá": [
+   [
+    "p",
+    [
+     [
+      475,
+      960
+     ],
+     [
+      480,
+      880
+     ],
+     [
+      556,
+      887
+     ],
+     [
+      640,
+      808
+     ],
+     [
+      740,
+      795
+     ],
+     [
+      905,
+      855
+     ],
+     [
+      905,
+      1205
+     ],
+     [
+      405,
+      1205
+     ],
+     [
+      422,
+      1080
+     ],
+     [
+      442,
+      1002
+     ]
+    ]
+   ]
+  ],
+  "La ropa del niño de adelante": [
+   [
+    "p",
+    [
+     [
+      -5,
+      882
+     ],
+     [
+      158,
+      882
+     ],
+     [
+      172,
+      1040
+     ],
+     [
+      230,
+      1087
+     ],
+     [
+      330,
+      1097
+     ],
+     [
+      400,
+      1070
+     ],
+     [
+      422,
+      1080
+     ],
+     [
+      405,
+      1205
+     ],
+     [
+      -5,
+      1205
+     ]
+    ]
+   ]
+  ],
+  "La barda": [
+   [
+    "p",
+    [
+     [
+      -5,
+      640
+     ],
+     [
+      250,
+      612
+     ],
+     [
+      250,
+      705
+     ],
+     [
+      205,
+      710
+     ],
+     [
+      205,
+      882
+     ],
+     [
+      -5,
+      882
+     ]
+    ]
+   ],
+   [
+    "p",
+    [
+     [
+      640,
+      610
+     ],
+     [
+      905,
+      545
+     ],
+     [
+      905,
+      860
+     ],
+     [
+      740,
+      795
+     ],
+     [
+      740,
+      640
+     ]
+    ]
+   ]
+  ],
+  "El árbol": [
+   [
+    "p",
+    [
+     [
+      -5,
+      -5
+     ],
+     [
+      905,
+      -5
+     ],
+     [
+      905,
+      380
+     ],
+     [
+      -5,
+      380
+     ]
+    ]
+   ]
+  ]
+ },
+ "orden": [
+  "Los ojos y las cejas del papá",
+  "La nariz y la boca del papá",
+  "Los ojos y las cejas del niño de adelante",
+  "La nariz y la boca del niño de adelante",
+  "La cabeza y el cabello del papá",
+  "La cabeza y el cabello del niño de adelante",
+  "El niño de atrás",
+  "La camisa y el collar del papá",
+  "La ropa del niño de adelante",
+  "La barda",
+  "El árbol"
+ ],
+ "resto": "Las hojas de abajo",
+ "pasos": [
+  "Los ojos y las cejas del papá",
+  "La nariz y la boca del papá",
+  "La cabeza y el cabello del papá",
+  "Los ojos y las cejas del niño de adelante",
+  "La nariz y la boca del niño de adelante",
+  "La cabeza y el cabello del niño de adelante",
+  "El niño de atrás",
+  "La camisa y el collar del papá",
+  "La ropa del niño de adelante",
+  "La barda",
+  "El árbol",
+  "Las hojas de abajo"
+ ],
+ "regiones": [
+  [
+   "papa",
+   {
+    "mas": [
+     "Los ojos y las cejas del papá",
+     "La nariz y la boca del papá",
+     "La cabeza y el cabello del papá"
+    ],
+    "envolvente": [
+     25,
+     [
+      "Los ojos y las cejas del papá",
+      "La nariz y la boca del papá",
+      "La cabeza y el cabello del papá"
+     ]
+    ]
+   },
+   [
+    0.6,
+    0.35,
+    0.0
+   ]
+  ],
+  [
+   "adelante",
+   {
+    "mas": [
+     "Los ojos y las cejas del niño de adelante",
+     "La nariz y la boca del niño de adelante",
+     "La cabeza y el cabello del niño de adelante"
+    ],
+    "envolvente": [
+     25,
+     [
+      "Los ojos y las cejas del niño de adelante",
+      "La nariz y la boca del niño de adelante",
+      "La cabeza y el cabello del niño de adelante"
+     ]
+    ]
+   },
+   [
+    0.6,
+    0.35,
+    0.0
+   ]
+  ],
+  [
+   "atras",
+   {
+    "mas": [
+     "El niño de atrás"
+    ],
+    "envolvente": [
+     25,
+     [
+      "El niño de atrás"
+     ]
+    ]
+   },
+   [
+    0.6,
+    0.35,
+    0.0
+   ]
+  ],
+  [
+   "ropa",
+   {
+    "mas": [
+     "La camisa y el collar del papá",
+     "La ropa del niño de adelante"
+    ]
+   },
+   [
+    0.6,
+    0.35,
+    0.0
+   ]
+  ],
+  [
+   "fondo",
+   null,
+   [
+    0.6,
+    0.35,
+    0.0
+   ]
+  ]
+ ],
+ "d_blur": {
+  "fondo": 4
+ },
+ "guias": [
+  [
+   "elipse_m",
+   [
+    552,
+    668,
+    150,
+    215,
+    0
+   ]
+  ],
+  [
+   "linea",
+   [
+    [
+     425,
+     628
+    ],
+    [
+     612,
+     636
+    ]
+   ]
+  ],
+  [
+   "linea",
+   [
+    [
+     548,
+     470
+    ],
+    [
+     540,
+     890
+    ]
+   ]
+  ],
+  [
+   "elipse_m",
+   [
+    312,
+    900,
+    148,
+    188,
+    -8
+   ]
+  ],
+  [
+   "linea",
+   [
+    [
+     198,
+     876
+    ],
+    [
+     362,
+     903
+    ]
+   ]
+  ],
+  [
+   "elipse_m",
+   [
+    296,
+    560,
+    95,
+    135,
+    0
+   ]
+  ],
+  [
+   "linea",
+   [
+    [
+     212,
+     558
+    ],
+    [
+     322,
+     552
+    ]
+   ]
+  ],
+  [
+   "curva",
+   [
+    [
+     470,
+     975
+    ],
+    [
+     600,
+     880
+    ],
+    [
+     740,
+     830
+    ],
+    [
+     905,
+     900
+    ]
+   ]
+  ],
+  [
+   "linea",
+   [
+    [
+     0,
+     690
+    ],
+    [
+     250,
+     660
+    ]
+   ]
+  ],
+  [
+   "linea",
+   [
+    [
+     650,
+     640
+    ],
+    [
+     905,
+     600
+    ]
+   ]
+  ]
+ ],
+ "figura_todo": true
+}
