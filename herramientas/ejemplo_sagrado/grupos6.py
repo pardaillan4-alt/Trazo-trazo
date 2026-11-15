@@ -77,7 +77,12 @@ if LET and '_h' in LET:
         nps.append(p); nwd.append(w)
     ps,WD=nps,nwd; print('letras: trazos partidos en la orilla',npart)
 G={};GW={}
+FIJ={}      # cfg['fijos'] = {archivo.npy: paso}: esos trazos (medidos aparte, como las manchas de la jirafa) van completos a ese paso
+for fn,pk in (cfg.get('fijos') or {}).items():
+    for q in np.load(fn,allow_pickle=True): FIJ[(len(q),round(float(q[0][0]),2),round(float(q[0][1]),2))]=pk
 for p,w in zip(ps,WD):
+    kf=FIJ.get((len(p),round(float(p[0][0]),2),round(float(p[0][1]),2)))
+    if kf: G.setdefault(kf,[]).append(p); GW.setdefault(kf,[]).append(float(w)); continue
     q0=remuestrea(p,1.0)      # las fracciones dentro de una zona se miden a lo largo del trazo, no solo en sus vértices
     x=np.clip(np.round(q0[:,0]).astype(int),0,W-1); y=np.clip(np.round(q0[:,1]).astype(int),0,H-1)
     k=None

@@ -26,3 +26,13 @@
   - `integ_divina.py`: textos y armado de las dos versiones (`ddivina` y `ddivina_lapiz`).
 - `vec.py` y `furlib2.py`: los usan todos los `gen*.py`; cópialos a la carpeta del dibujo.
 - Para armar la app después de agregar un dibujo: ver `fuente/LEEME.md` (`sh assemble.sh` crea `index.html`, `app.html`, `vec/` y las miniaturas).
+
+## Jirafita y perezoso (noviembre 2026)
+- `ejemplo_jirafita/`: la jirafita no trae dibujo de líneas; las líneas salen de la imagen gris con
+  `trazo_mix.py 80 45 4 60` (el 3.er valor separa el rayado de sombra pegado al contorno; el 4.o es el largo mínimo de las líneas finas).
+  Las manchas se miden aparte con `manchas.py` y van completas a su paso con `"fijos": {"manchas.npy": "Las manchas"}` en `cfg.json`.
+  Los ojos negros se rellenan con contornos hacia adentro (`detalles.py`).
+- En las regiones del sombreado (`gen6.py`): `sin_cielo` deja el cielo para el final y `objeto` limita la región a los colores de esa parte
+  (hojas verdes, troncos cafés, orillas), para que no se vean cuadros de cielo alrededor de los árboles y las mariposas.
+- `ejemplo_perezoso/`: pupilas y fosas medidas a mano y rellenas (`detalles.py`); el tronco va en una zona que sigue su curva.
+- `continuo.py`: dentro de cada paso, primero las líneas largas y fuertes, luego las medianas y al final los detalles finos (`niveles`).
