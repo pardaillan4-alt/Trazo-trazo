@@ -36,3 +36,10 @@
   (hojas verdes, troncos cafés, orillas), para que no se vean cuadros de cielo alrededor de los árboles y las mariposas.
 - `ejemplo_perezoso/`: pupilas y fosas medidas a mano y rellenas (`detalles.py`); el tronco va en una zona que sigue su curva.
 - `continuo.py`: dentro de cada paso, primero las líneas largas y fuertes, luego las medianas y al final los detalles finos (`niveles`).
+
+## Leoncito (noviembre 2026)
+- `ejemplo_leoncito/`: líneas del dibujo de líneas con `trazo_mix.py 140`; ojos y fosas de la nariz rellenos (`detalles.py`).
+- `mascara_leon.py` hace la silueta exacta del león con el dibujo de líneas. Sirve dos veces:
+  `"recorte"` en `cfg.json` (`grupos6.py`) para que las zonas del león no tomen el pasto de junto,
+  y `"mascara": ["leon_mask.png", 2]` en la región del sombreado (`gen6.py`), para que no quede un halo de color alrededor.
+- `fuente/build/dedup_hojas.py` (lo corre `build.py`): la versión a color y la de lápiz comparten las hojas de las líneas, que salen idénticas; se guarda una sola copia.

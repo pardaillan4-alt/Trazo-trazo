@@ -9,6 +9,8 @@ def mk(sh):
     else: cv2.ellipse(m,tuple(sh[1]),tuple(sh[2]),0,0,360,1,-1)
     return m
 M={k:np.clip(sum(mk(s) for s in v),0,1) for k,v in cfg['zonas'].items()}
+for k_,f_ in (cfg.get('recorte') or {}).items():      # zona recortada a una máscara (la silueta real del animal, para no tomar el pasto de junto)
+    rm=cv2.imread(f_,0); M[k_]&=(cv2.resize(rm,(W,H),interpolation=cv2.INTER_NEAREST)>127).astype(np.uint8)
 B=cfg.get('burbujas')
 if B: AG=mk(['p',B['agua']]); FUERA=np.clip(sum(M[k] for k in B['fuera_de']),0,1)
 def remuestrea(p,step):

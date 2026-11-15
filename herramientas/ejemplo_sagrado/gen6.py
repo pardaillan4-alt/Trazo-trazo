@@ -75,6 +75,10 @@ REG=[]; usado=np.zeros((H,W),np.uint8)
 for nm,steps,bands,*op in cfg['regiones']:
     if isinstance(steps,dict):      # región por polígonos (zonas o polígonos propios), solo dentro del dibujo
         m=pmask(steps['mas'])&(1-pmask(steps.get('menos',[])))&FIG&(1-usado)
+        if steps.get('mascara'):      # [archivo, px]: la silueta exacta del animal (hecha con el dibujo de líneas), encogida px, sin halo alrededor
+            mf,er=steps['mascara']; mm=(cv2.resize(cv2.imread(mf,0),(W,H),interpolation=cv2.INTER_NEAREST)>127).astype(np.uint8)
+            if er: mm=cv2.erode(mm,cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2*er+1,2*er+1)))
+            m&=mm
         if steps.get('silueta'):      # y dentro del contorno real de esas partes (sin cuadros alrededor)
             m&=cv2.dilate(silueta2(steps['silueta']),cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)))
         if steps.get('envolvente'):     # [k, pasos]: la forma llena que cubren los trazos de esas partes (cabeza y pelo completos)

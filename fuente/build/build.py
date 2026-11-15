@@ -8,6 +8,8 @@ import os,re,json,glob,subprocess,sys
 from PIL import Image
 import numpy as np
 os.chdir(os.path.dirname(os.path.abspath(__file__))+'/..')
+# 0) hojas repetidas (color y lápiz comparten las de las líneas): una sola copia
+subprocess.run([sys.executable,'build/dedup_hojas.py'],check=True)
 # 1) trazos de cada dibujo y datos de miniaturas
 r=subprocess.run(['node','build/export_vec.js','.','vec','build/miniaturas.json'],capture_output=True,text=True)
 if r.returncode: print(r.stderr); sys.exit(1)
