@@ -54,3 +54,14 @@
 - `fuente/t_pasos.py ID NL` (orden de los trazos y hoja de pasos) y `fuente/t_todos.py` (todos los dibujos, sin errores).
 - Espacio del artifact: `render.js` ya acepta un mapa `ASSET` (hojas en el almacén de imágenes del artifact,
   `build/assets_artifact.json`); solo se usa en `app.html`, GitHub sigue con `img/`.
+
+## San Miguel Arcángel (noviembre 2026)
+- `ejemplo_miguel/`: líneas del dibujo de líneas con `trazo_mix.py 205` (umbral claro, para que salgan las rayitas finas
+  de las plumas y los adornos). `detalles.py` redibuja los ojos a mano.
+- `mascaras.py`: máscaras del sombreado con los huecos blancos del dibujo de líneas, repartidos por zona (San Miguel, alas,
+  demonio y roca); lo conectado con la orilla es el fondo. La capa de la imagen a lápiz es más grande que la del dibujo
+  de líneas: lo oscuro pegado a San Miguel también va con él.
+- Almacén de imágenes del artifact: el artifact ya casi no tiene espacio para archivos (límite 256 MB por versión, las voces
+  ocupan la mayor parte). Desde San Miguel, las hojas de cada dibujo nuevo se suben al almacén (`Artifact` con `asset: true`),
+  cada dirección `/_blob/<id>` se anota en `fuente/build/assets_artifact.json` y `build.py` las pone en `app.html`
+  (mapa `ASSET` de `render.js`). GitHub (`index.html`) sigue usando `img/`. `fuente/t_assets.py` lo prueba en local.
