@@ -6,6 +6,8 @@ ps=list(np.load('trazos_hd.npy',allow_pickle=True)); WD=list(np.load('wid_hd.npy
 def mk(sh):
     m=np.zeros((H,W),np.uint8)
     if sh[0]=='p': cv2.fillPoly(m,[np.array(sh[1],np.int32)],1)
+    elif sh[0]=='a':      # anillo: ['a', [cx,cy], r_adentro, r_afuera] (los círculos de una aureola)
+        yy,xx=np.mgrid[0:H,0:W]; d=np.hypot(xx-sh[1][0],yy-sh[1][1]); m[(d>=sh[2])&(d<=sh[3])]=1
     else: cv2.ellipse(m,tuple(sh[1]),tuple(sh[2]),0,0,360,1,-1)
     return m
 M={k:np.clip(sum(mk(s) for s in v),0,1) for k,v in cfg['zonas'].items()}

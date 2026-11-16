@@ -41,6 +41,7 @@ def vacio(o):
 parts=[]
 for f in ['helpers.js','render.js','parts.js','audio.js']+sorted(glob.glob('g_*.js'))+['ui.js']:
     s=open(f).read()
+    if f=='parts.js': parts.append('/*ASSETS*/')
     if f.startswith('g_zvec'):
         L=s.split('\n')
         for i,l in enumerate(L):
@@ -51,12 +52,16 @@ for f in ['helpers.js','render.js','parts.js','audio.js']+sorted(glob.glob('g_*.
         parts.append('const VECF=new Set('+json.dumps(VECF)+');\nconst META='+json.dumps(META,separators=(',',':'))+';')
     parts.append(s)
 js='\n'.join(parts)
+# hojas que el artifact guarda en su almacén de imágenes (build/assets_artifact.json: 'img/hoja.webp' -> dirección); GitHub usa img/
+AS=json.load(open('build/assets_artifact.json')) if os.path.exists('build/assets_artifact.json') else {}
+js_app=js.replace('/*ASSETS*/','Object.assign(ASSET,'+json.dumps(AS,separators=(',',':'))+');' if AS else '')
+js=js.replace('/*ASSETS*/','')
 open('all.js','w').write(js)
 r=subprocess.run(['node','--check','all.js'],capture_output=True,text=True)
 if r.returncode: print(r.stderr); sys.exit(1)
 head=open('head2.html').read().replace('/*FUENTES*/',open('build/fuentes.css').read()); defs=open('defs.html').read(); body=open('body2.html').read()
 app=head+defs+body+'<script>\n'+js+'\n</script>\n'
-open('app.html','w').write(app)
+open('app.html','w').write(head+defs+body+'<script>\n'+js_app+'\n</script>\n')
 # index.html: documento completo (GitHub / Cloudflare)
 doc=('<!doctype html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n'
      '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'

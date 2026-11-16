@@ -251,7 +251,8 @@ let SCN=0;
 let SPEED=1;
 let PENDING_SHADE=null;
 const SPRMAP={};  /* 'img/x.webp' -> 'img/hoja.webp#n' */
-const sprOf=src=>{const m=/^(.*)#(\d+)(?:@(\d+)x(\d+)x(\d+)x(\d+))?$/.exec(SPRMAP[src]||'');if(!m)return null;const t=+m[2],w=+(m[3]||800),h=+(m[4]||800),c=+(m[5]||4),rw=+(m[6]||3);return{f:m[1],x:(t%c)*w,y:Math.floor(t/c)*h,w,h,W:c*w,H:rw*h}};  /* velocidad de las animaciones, la elige quien dibuja */
+const ASSET={};  /* solo en el artifact: hojas guardadas en su almacén de imágenes, 'img/hoja.webp' -> su dirección */
+const sprOf=src=>{const m=/^(.*)#(\d+)(?:@(\d+)x(\d+)x(\d+)x(\d+))?$/.exec(SPRMAP[src]||'');if(!m)return null;const t=+m[2],w=+(m[3]||800),h=+(m[4]||800),c=+(m[5]||4),rw=+(m[6]||3);return{f:ASSET[m[1]]||m[1],x:(t%c)*w,y:Math.floor(t/c)*h,w,h,W:c*w,H:rw*h}};  /* velocidad de las animaciones, la elige quien dibuja */
 /* Escena: k = paso actual (1...), full = terminado, lite = miniatura */
 function scene(d,tk,k,full,lite){
   if(d.img){

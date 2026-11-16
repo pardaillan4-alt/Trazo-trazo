@@ -43,3 +43,14 @@
   `"recorte"` en `cfg.json` (`grupos6.py`) para que las zonas del león no tomen el pasto de junto,
   y `"mascara": ["leon_mask.png", 2]` en la región del sombreado (`gen6.py`), para que no quede un halo de color alrededor.
 - `fuente/build/dedup_hojas.py` (lo corre `build.py`): la versión a color y la de lápiz comparten las hojas de las líneas, que salen idénticas; se guarda una sola copia.
+
+## Virgen Milagrosa (noviembre 2026)
+- `ejemplo_milagrosa/`: líneas del dibujo de líneas con `trazo_mix.py 170`. `detalles.py` quita la firma «Corazón de Paúl»
+  (máscara de las letras con huecos) y redibuja los ojos a mano (párpados, pliegue, iris recortado y pupila rellena).
+- Zona tipo anillo en `grupos6.py`: `["a", [cx,cy], r_adentro, r_afuera]`. La aureola se escoge por forma (trazos que siguen
+  un círculo alrededor de la cabeza) y va completa a su paso con `"fijos"`.
+- Las imágenes del dibujo se guardan a 720 px (`"OW": 720`) para que pesen menos.
+- `grid_zona.py` y `ver_grupos.py`: acercamientos con cuadrícula y con las partes de colores.
+- `fuente/t_pasos.py ID NL` (orden de los trazos y hoja de pasos) y `fuente/t_todos.py` (todos los dibujos, sin errores).
+- Espacio del artifact: `render.js` ya acepta un mapa `ASSET` (hojas en el almacén de imágenes del artifact,
+  `build/assets_artifact.json`); solo se usa en `app.html`, GitHub sigue con `img/`.
